@@ -1,0 +1,14 @@
+[package]
+name = "eidolon-items"
+description = "NEP-245 multi-token item ledger for the eidolon village economy"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk.workspace = true
+near-sdk-contract-tools.workspace = true

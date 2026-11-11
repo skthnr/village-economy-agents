@@ -1,10 +1,11 @@
+target/
 node_modules/
-viewer/node_modules/
-viewer/dist/
-dist/
 .env
+.keys/
+dist/
+coverage/
 *.log
+.near-credentials/
 .DS_Store
-data/world_state.json
-data/logs/
-data/memory/
+sandbox/
+*.wasm
