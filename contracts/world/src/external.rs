@@ -1,4 +1,4 @@
-use near_sdk::{ext_contract, json_types::U128, near, AccountId, NearToken, Promise};
+use near_sdk::{ext_contract, json_types::U128, near, AccountId, NearToken};
 
 /// JSON-compatible mirror of `near_sdk_contract_tools::mt::MtTransferApproval`:
 /// a tuple of `(owner_id, approval_id)`. The world crate passes `None`; the
@@ -37,15 +37,6 @@ pub trait ExtItems {
         memo: Option<String>,
     );
 
-    fn mt_transfer_call(
-        &self,
-        receiver_id: AccountId,
-        token_id: String,
-        amount: U128,
-        approval: Option<MtTransferApproval>,
-        memo: Option<String>,
-        msg: String,
-    ) -> Promise;
 
     fn storage_deposit(
         &self,
@@ -58,13 +49,6 @@ pub trait ExtItems {
 pub trait ExtCoin {
     fn ft_transfer(&self, receiver_id: AccountId, amount: U128, memo: Option<String>);
 
-    fn ft_transfer_call(
-        &self,
-        receiver_id: AccountId,
-        amount: U128,
-        memo: Option<String>,
-        msg: String,
-    ) -> Promise;
 
     /// Owner-authorized levy transfer (world is the coin owner).
     fn tax(&self, sender_id: AccountId, receiver_id: AccountId, amount: U128);

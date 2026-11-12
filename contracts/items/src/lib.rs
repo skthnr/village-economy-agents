@@ -5,7 +5,7 @@ use near_sdk_contract_tools::{
     Owner,
 };
 
-const STORAGE_MIN_YOCTO: u128 = 2_500_000_000_000_000_000_000;
+const STORAGE_MIN: NearToken = NearToken::from_yoctonear(2_500_000_000_000_000_000_000);
 const ALL_ITEMS: [&str; 18] = [
     "wheat", "flour", "bread", "meat", "milk", "eggs", "vegetables", "herbs", "medicine",
     "iron_ore", "coal", "iron_tools", "timber", "firewood", "furniture", "ale", "meal", "cloth",
@@ -24,7 +24,7 @@ impl Items {
         Owner::init(&mut contract, &owner_id);
         contract.set_contract_metadata(&ContractMetadata::new("eidolon items"));
         contract.set_storage_balance_bounds(&StorageBalanceBounds {
-            min: NearToken::from_yoctonear(STORAGE_MIN_YOCTO),
+            min: STORAGE_MIN,
             max: None,
         });
 

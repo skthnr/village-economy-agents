@@ -97,11 +97,6 @@ pub fn energy_after_noon(energy: u8) -> u8 {
     energy.saturating_sub(5)
 }
 
-/// Kept for the W1 pure-helper tests; same math as `energy_after_noon`.
-pub fn energy_after_work(energy: u8) -> u8 {
-    energy_after_noon(energy)
-}
-
 /// Origin winter heating without firewood: −1.0 energy, +1 sickness capped at 3.
 pub fn energy_after_winter(energy: u8) -> u8 {
     energy.saturating_sub(WINTER_ENERGY_PENALTY_TENTHS)

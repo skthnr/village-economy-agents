@@ -14,9 +14,9 @@ use crate::{
     events::Event,
     external::{ext_coin, ext_items, ext_self},
     market::{
-        expires_at, fill_cost, fill_id, fill_quantity, index_from_ring, is_expired, order_id,
+        expires_at, fill_cost, fill_id, fill_quantity, is_expired, mean_price, order_id,
         parse_buy_msg, parse_sell_msg, push_price, trade_id, trade_volume_slot,
-        BUY_ORDER_DEPOSIT_YOCTO, MT_TRANSFER_DEPOSIT_YOCTO,
+        BUY_ORDER_DEPOSIT, MT_TRANSFER_DEPOSIT_YOCTO,
     },
     recipes::canonical_item_rank,
     state::{BuyFill, Order, OrderSide},
@@ -45,7 +45,7 @@ impl World {
         if quantity == 0 || price == 0 {
             env::panic_str("post_order: quantity and price must be greater than zero");
         }
-        if env::attached_deposit() != NearToken::from_yoctonear(BUY_ORDER_DEPOSIT_YOCTO) {
+        if env::attached_deposit() != BUY_ORDER_DEPOSIT {
             env::panic_str("post_order: attach exactly the 0.01 NEAR order deposit");
         }
 
@@ -116,21 +116,10 @@ impl World {
         .emit();
 
         match order.side {
-            OrderSide::Sell => {
-                self.mirror_add_item(&order.agent_id, &order.item, order.quantity);
-                ext_items::ext(self.items_contract.clone())
-                    .with_static_gas(GAS_FOR_TOKEN_CALL)
-                    .with_attached_deposit(NearToken::from_yoctonear(MT_TRANSFER_DEPOSIT_YOCTO))
-                    .mt_transfer(
-                        order.agent_id,
-                        order.item,
-                        U128(order.quantity),
-                        None,
-                        None,
-                    )
-            }
+            OrderSide::Sell =>
+                self.refund_sell_order(&order.agent_id, &order.item, order.quantity),
             OrderSide::Buy => Promise::new(order.agent_id)
-                .transfer(NearToken::from_yoctonear(BUY_ORDER_DEPOSIT_YOCTO)),
+                .transfer(BUY_ORDER_DEPOSIT),
         }
     }
 
@@ -388,6 +377,14 @@ impl World {
         self.next_fill_seq += 1;
         id
     }
+    fn refund_sell_order(&mut self, agent: &AccountId, item: &str, quantity: u128) -> Promise {
+        self.mirror_add_item(agent, item, quantity);
+        ext_items::ext(self.items_contract.clone())
+            .with_static_gas(GAS_FOR_TOKEN_CALL)
+            .with_attached_deposit(NearToken::from_yoctonear(MT_TRANSFER_DEPOSIT_YOCTO))
+            .mt_transfer(agent.clone(), item.to_string(), U128(quantity), None, None)
+    }
+
 
     fn pay_coin(&mut self, receiver: AccountId, amount: u128) {
         if amount == 0 {
@@ -427,7 +424,6 @@ impl World {
 
             match order.side {
                 OrderSide::Sell => {
-                    self.mirror_add_item(&order.agent_id, &order.item, order.quantity);
                     self.push_feedback(
                         &order.agent_id,
                         format!(
@@ -435,18 +431,7 @@ impl World {
                             order.quantity, order.item
                         ),
                     );
-                    let _ = ext_items::ext(self.items_contract.clone())
-                        .with_static_gas(GAS_FOR_TOKEN_CALL)
-                        .with_attached_deposit(NearToken::from_yoctonear(
-                            MT_TRANSFER_DEPOSIT_YOCTO,
-                        ))
-                        .mt_transfer(
-                            order.agent_id,
-                            order.item,
-                            U128(order.quantity),
-                            None,
-                            None,
-                        );
+                    let _ = self.refund_sell_order(&order.agent_id, &order.item, order.quantity);
                 }
                 OrderSide::Buy => {
                     self.push_feedback(
@@ -457,7 +442,7 @@ impl World {
                         ),
                     );
                     let _ = Promise::new(order.agent_id)
-                        .transfer(NearToken::from_yoctonear(BUY_ORDER_DEPOSIT_YOCTO));
+                        .transfer(BUY_ORDER_DEPOSIT);
                 }
             }
         }
@@ -469,7 +454,7 @@ impl World {
         let key = item.to_string();
         let mut ring = self.trade_price_ring.get(&key).cloned().unwrap_or_default();
         push_price(&mut ring, u64::try_from(price).unwrap_or(u64::MAX));
-        if let Some(index) = index_from_ring(&ring) {
+        if let Some(index) = mean_price(&ring) {
             self.price_index.insert(key.clone(), index);
         }
         self.trade_price_ring.insert(key, ring);

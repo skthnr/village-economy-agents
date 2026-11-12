@@ -72,18 +72,36 @@ export interface Perception {
   feedback: string[];
 }
 
-export interface Action {
-  action_type: ActionType;
+interface ActionBase {
   text?: string;
-  item?: string;
-  quantity?: string;
-  price?: string;
-  max_price?: string;
-  order_id?: number;
-  location?: string;
   target?: string;
-  side?: OrderSide;
 }
+
+export type Action =
+  | (ActionBase & { action_type: "move_to"; location: string })
+  | (ActionBase & { action_type: "speak"; text: string })
+  | (ActionBase & {
+      action_type: "produce";
+      item: string;
+      quantity?: string;
+      location?: string;
+    })
+  | (ActionBase & { action_type: "eat"; item: string; quantity?: string })
+  | (ActionBase & {
+      action_type: "post_order";
+      side: OrderSide;
+      item: string;
+      quantity: string;
+      price: string;
+    })
+  | (ActionBase & {
+      action_type: "buy_item";
+      order_id: number;
+      max_price: string;
+      quantity: string;
+      item?: string;
+    })
+  | (ActionBase & { action_type: "cancel_order"; order_id: number });
 
 export const TICKS_PER_DAY = 16;
 export const DAYS_PER_SEASON = 7;
@@ -280,7 +298,7 @@ export function parseActions(value: unknown): Action[] {
       throw new TypeError(`${path}.action_type is not a supported action`);
     }
 
-    const action: Action = { action_type: rawType as ActionType };
+    const action = { action_type: rawType } as Action & Record<string, unknown>;
     const text = optionalString(record, "text", path);
     const item = optionalString(record, "item", path);
     const location = optionalString(record, "location", path);

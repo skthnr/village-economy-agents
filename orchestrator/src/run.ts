@@ -3,6 +3,7 @@ import {
   JsonRpcProvider,
   KeyPair,
   KeyPairSigner,
+  nearToYocto,
   teraToGas,
   type KeyPairString,
 } from "near-api-js";
@@ -26,7 +27,7 @@ const CANCEL_CALL_GAS = teraToGas(60);
 const RUN_TICK_GAS = teraToGas(600);
 const NO_DEPOSIT = 0n;
 const ONE_YOCTO = 1n;
-const ORDER_DEPOSIT = 10_000_000_000_000_000_000_000n;
+const ORDER_DEPOSIT = nearToYocto("0.01");
 
 interface RunConfig {
   worldAccount: string;
@@ -206,7 +207,7 @@ async function submitActions(
   actions: readonly Action[],
 ): Promise<number> {
   if (config.relayerUrl !== undefined) {
-    return submitCoreActionsViaRelayer(account, config.worldAccount, actions);
+    return submitCoreActionsViaRelayer(account, config.worldAccount, config.relayerUrl, actions);
   }
 
   const core = selectCoreActions(actions);
@@ -230,17 +231,6 @@ async function executeOrderActions(
 
   for (const action of actions) {
     if (action.action_type === "post_order") {
-      if (action.side !== "sell" && action.side !== "buy") {
-        throw new Error("post_order action needs side sell or buy");
-      }
-      if (
-        action.item === undefined ||
-        action.quantity === undefined ||
-        action.price === undefined
-      ) {
-        throw new Error("post_order action needs item, quantity, and price");
-      }
-
       if (action.side === "buy") {
         await account.callFunction({
           contractId: config.worldAccount,
@@ -267,14 +257,6 @@ async function executeOrderActions(
       }
       submitted += 1;
     } else if (action.action_type === "buy_item") {
-      if (
-        action.order_id === undefined ||
-        action.max_price === undefined ||
-        action.quantity === undefined
-      ) {
-        throw new Error("buy_item action needs order_id, max_price, and quantity");
-      }
-
       await account.callFunction({
         contractId: config.coinAccount,
         methodName: "ft_transfer_call",
@@ -289,10 +271,6 @@ async function executeOrderActions(
       });
       submitted += 1;
     } else if (action.action_type === "cancel_order") {
-      if (action.order_id === undefined) {
-        throw new Error("cancel_order action needs order_id");
-      }
-
       await account.callFunction({
         contractId: config.worldAccount,
         methodName: "cancel_order",

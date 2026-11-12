@@ -226,7 +226,6 @@ export function resolvePolicyMode(
   hasApiKey: boolean,
 ): "policy" | "llm" {
   if (requested === "policy") return "policy";
-  if (requested === "llm") return hasApiKey ? "llm" : "policy";
   return hasApiKey ? "llm" : "policy";
 }
 

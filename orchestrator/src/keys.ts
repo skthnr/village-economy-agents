@@ -35,13 +35,6 @@ export async function ensureAgentKeys(names: readonly string[]): Promise<Map<str
   return keys;
 }
 
-export async function loadAgentKeys(name: string): Promise<AgentKeys> {
-  const stored = await readStoredKeys(name);
-  if (stored === undefined) {
-    throw new Error(`no keystore entry for ${name}; call ensureAgentKeys first`);
-  }
-  return parseStoredKeys(stored, name);
-}
 
 async function loadOrCreate(name: string): Promise<AgentKeys> {
   const existing = await readStoredKeys(name);

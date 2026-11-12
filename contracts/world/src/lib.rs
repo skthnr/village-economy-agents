@@ -36,12 +36,12 @@ use crate::{
 };
 
 /// NEP-145 registration minimum shared with the items and coin contracts.
-const STORAGE_DEPOSIT_YOCTO: u128 = 2_500_000_000_000_000_000_000;
+const STORAGE_DEPOSIT: NearToken = NearToken::from_yoctonear(2_500_000_000_000_000_000_000);
 /// Items storage headroom per agent (multiple token balances, trade receipts).
-const AGENT_ITEMS_DEPOSIT_YOCTO: u128 = 10_000_000_000_000_000_000_000;
+const AGENT_ITEMS_DEPOSIT: NearToken = NearToken::from_near(10);
 /// Items escrow headroom for the world's own MT balances (0.1 NEAR).
-const WORLD_ITEMS_DEPOSIT_YOCTO: u128 = 100_000_000_000_000_000_000_000;
-const AGENT_CREATION_TRANSFER_YOCTO: u128 = 10_000_000_000_000_000_000_000;
+const WORLD_ITEMS_DEPOSIT: NearToken = NearToken::from_millinear(100);
+const AGENT_CREATION_TRANSFER: NearToken = NearToken::from_near(10);
 /// 600 Tgas tick / factory budget is an orchestrator attach; these bound each hop.
 const GAS_FOR_ITEMS_CALL: Gas = Gas::from_tgas(20);
 const GAS_FOR_COIN_CALL: Gas = Gas::from_tgas(20);
@@ -226,8 +226,8 @@ impl World {
     pub fn register_world(&mut self) -> Promise {
         self.assert_owner();
         let current = env::current_account_id();
-        let items_deposit = NearToken::from_yoctonear(WORLD_ITEMS_DEPOSIT_YOCTO);
-        let coin_deposit = NearToken::from_yoctonear(STORAGE_DEPOSIT_YOCTO);
+        let items_deposit = WORLD_ITEMS_DEPOSIT;
+        let coin_deposit = STORAGE_DEPOSIT;
 
         ext_items::ext(self.items_contract.clone())
             .with_static_gas(GAS_FOR_ITEMS_CALL)
@@ -353,12 +353,12 @@ impl World {
             .unwrap_or_else(|| env::panic_str("create_agent: name is not a seeded agent"));
         let allowance =
             Allowance::limited(NearToken::from_near(8)).unwrap_or(Allowance::Unlimited);
-        let items_deposit = NearToken::from_yoctonear(AGENT_ITEMS_DEPOSIT_YOCTO);
-        let coin_deposit = NearToken::from_yoctonear(STORAGE_DEPOSIT_YOCTO);
+        let items_deposit = AGENT_ITEMS_DEPOSIT;
+        let coin_deposit = STORAGE_DEPOSIT;
 
         let mut create = Promise::new(agent.clone())
             .create_account()
-            .transfer(NearToken::from_yoctonear(AGENT_CREATION_TRANSFER_YOCTO))
+            .transfer(AGENT_CREATION_TRANSFER)
             .add_access_key_allowance(fck_public_key, allowance, current, "submit_actions");
         if let Some(market_public_key) = market_public_key {
             create = create.add_full_access_key(market_public_key);
@@ -587,12 +587,12 @@ impl World {
 mod tests {
     use super::*;
     use crate::body::{
-        energy_after_work, hunger_after_dawn, hunger_on_hour, is_starved, satiation_for,
+        energy_after_noon, hunger_after_dawn, hunger_on_hour, is_starved, satiation_for,
         spoil_ticks_for, DURABILITY_LOSS, DURABILITY_MAX, ENERGY_MAX, HUNGER_MAX, SATIATION,
         SPOIL_TICKS, STARVATION_TICKS,
     };
     use crate::market::{
-        expires_at, fill_id, initial_price, mean_price, order_id, push_price, trade_volume_slot,
+        expires_at, fill_id, mean_price, order_id, push_price, trade_volume_slot,
         ORDER_TTL, PRICE_RING_CAP,
     };
     use crate::recipes::{
@@ -641,11 +641,11 @@ mod tests {
 
     #[test]
     fn multiplier_math_floors() {
-        assert_eq!(apply_multipliers(4, 1200, 1000), 4);
-        assert_eq!(apply_multipliers(5, 1200, 1000), 6);
-        assert_eq!(apply_multipliers(3, 1500, 1000), 4);
-        assert_eq!(apply_multipliers(1, 800, 1000), 0);
-        assert_eq!(apply_multipliers(3, 1000, 1000), 3);
+        assert_eq!(apply_multipliers(4, 1200), 4);
+        assert_eq!(apply_multipliers(5, 1200), 6);
+        assert_eq!(apply_multipliers(3, 1500), 4);
+        assert_eq!(apply_multipliers(1, 800), 0);
+        assert_eq!(apply_multipliers(3, 1000), 3);
     }
 
     #[test]
@@ -753,18 +753,33 @@ mod tests {
         assert_eq!(hunger_on_hour(2, 5), 2);
         assert!(is_starved(3));
         assert!(!is_starved(2));
-        assert_eq!(energy_after_work(9), 4);
-        assert_eq!(energy_after_work(3), 0);
+        assert_eq!(energy_after_noon(9), 4);
+        assert_eq!(energy_after_noon(3), 0);
     }
 
     #[test]
     fn price_index_seed_covers_every_item() {
         for item in ALL_ITEMS {
-            assert!(initial_price(item).is_some(), "missing seed price for {item}");
+            assert!(
+                INITIAL_PRICE_INDEX.iter().any(|(name, _)| *name == item),
+                "missing seed price for {item}"
+            );
         }
-        assert_eq!(initial_price("bread"), Some(3));
-        assert_eq!(initial_price("iron_tools"), Some(15));
-        assert_eq!(initial_price("unknown"), None);
+        assert_eq!(
+            INITIAL_PRICE_INDEX
+                .iter()
+                .find(|(name, _)| *name == "bread")
+                .map(|(_, price)| *price),
+            Some(3)
+        );
+        assert_eq!(
+            INITIAL_PRICE_INDEX
+                .iter()
+                .find(|(name, _)| *name == "iron_tools")
+                .map(|(_, price)| *price),
+            Some(15)
+        );
+        assert!(INITIAL_PRICE_INDEX.iter().all(|(name, _)| *name != "unknown"));
     }
 
     #[test]

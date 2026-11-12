@@ -56,19 +56,6 @@ pub struct Order {
     pub pending_fills: u32,
 }
 
-#[near(serializers = [json, borsh])]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Trade {
-    pub id: u64,
-    pub order_id: u64,
-    pub tick: u64,
-    pub buyer: AccountId,
-    pub seller: AccountId,
-    pub item: String,
-    pub quantity: u128,
-    pub price_per_unit: u128,
-    pub total: u128,
-}
 
 #[near(serializers = [json, borsh])]
 #[derive(Clone, Debug, PartialEq, Eq)]

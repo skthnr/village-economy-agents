@@ -1,3 +1,5 @@
+use near_sdk::NearToken;
+
 use crate::tick::TICKS_PER_DAY;
 
 pub const INITIAL_PRICE_INDEX: [(&str, u64); 18] = [
@@ -24,27 +26,20 @@ pub const INITIAL_PRICE_INDEX: [(&str, u64); 18] = [
 pub const PRICE_RING_CAP: usize = 10;
 pub const ORDER_TTL: u64 = 16;
 /// Refundable storage deposit for one BUY order record (10 millinear).
-pub const BUY_ORDER_DEPOSIT_YOCTO: u128 = 10_000_000_000_000_000_000_000;
+pub const BUY_ORDER_DEPOSIT: NearToken = NearToken::from_millinear(10);
 /// One-yocto deposit attached to every outbound `items::mt_transfer`.
 pub const MT_TRANSFER_DEPOSIT_YOCTO: u128 = 1;
-
-pub fn initial_price(item: &str) -> Option<u64> {
-    INITIAL_PRICE_INDEX
-        .iter()
-        .find(|(known, _)| *known == item)
-        .map(|(_, price)| *price)
-}
 
 pub fn order_id(tick: u64, seq: u64) -> u64 {
     (tick << 20) | seq
 }
 
 pub fn fill_id(tick: u64, seq: u64) -> u64 {
-    (tick << 20) | seq
+    order_id(tick, seq)
 }
 
 pub fn trade_id(tick: u64, seq: u64) -> u64 {
-    (tick << 20) | seq
+    order_id(tick, seq)
 }
 
 pub fn expires_at(tick: u64) -> u64 {
@@ -94,11 +89,6 @@ pub fn fill_cost(quantity: u128, price: u128) -> Option<u128> {
     quantity.checked_mul(price)
 }
 
-/// The mean price of the last `PRICE_RING_CAP` trades.
-pub fn index_from_ring(ring: &[u64]) -> Option<u64> {
-    mean_price(ring)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -114,11 +104,11 @@ mod tests {
             vec![3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
             "ring keeps only the latest cap"
         );
-        assert_eq!(index_from_ring(&ring), Some(8));
-        assert_eq!(index_from_ring(&[]), None);
-        assert_eq!(index_from_ring(&[4, 5]), Some(5));
-        assert_eq!(index_from_ring(&[1, 2]), Some(2));
-        assert_eq!(index_from_ring(&[3, 4]), Some(4));
+        assert_eq!(mean_price(&ring), Some(8));
+        assert_eq!(mean_price(&[]), None);
+        assert_eq!(mean_price(&[4, 5]), Some(5));
+        assert_eq!(mean_price(&[1, 2]), Some(2));
+        assert_eq!(mean_price(&[3, 4]), Some(4));
     }
 
     #[test]
@@ -164,7 +154,7 @@ mod tests {
         assert_eq!(fill_quantity(10, 0, 5), 0);
         assert_eq!(fill_cost(3, 3), Some(9));
         assert_eq!(fill_cost(u128::MAX, 2), None);
-        assert_eq!(BUY_ORDER_DEPOSIT_YOCTO, 10_000_000_000_000_000_000_000);
+        assert_eq!(BUY_ORDER_DEPOSIT, NearToken::from_millinear(10));
     }
 }
 

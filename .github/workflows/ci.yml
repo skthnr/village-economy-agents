@@ -50,7 +50,7 @@ jobs:
           done
 
       - name: Install node dependencies
-        run: npm install --no-package-lock
+        run: npm ci
 
       - name: Run sandbox test suite
         env:

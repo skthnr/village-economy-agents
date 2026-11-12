@@ -26,30 +26,7 @@ for name in WORLD_ACCOUNT ITEMS_ACCOUNT COIN_ACCOUNT NEAR_NETWORK WORLD_OWNER_KE
   fi
 done
 
-SEED_AGENTS_JSON=$(cat <<'JSON'
-[
-  {"name":"hans","profile":{"skill":"farmer","home":"Cottage 1","work":"Farm 1","work_start":6,"work_end":16,"wallet":30,"inventory":[["wheat",8]],"tool":"iron_tools","tool_durability":80}},
-  {"name":"ida","profile":{"skill":"none","home":"Cottage 2","work":"Cottage 2","work_start":6,"work_end":21,"wallet":12,"inventory":[["cloth",2]],"tool":null,"tool_durability":0}},
-  {"name":"konrad","profile":{"skill":"cattle","home":"Farm 2","work":"Farm 2","work_start":6,"work_end":15,"wallet":40,"inventory":[["milk",3],["meat",2]],"tool":"iron_tools","tool_durability":90}},
-  {"name":"ulrich","profile":{"skill":"farmer","home":"Cottage 4","work":"Farm 3","work_start":6,"work_end":16,"wallet":20,"inventory":[["vegetables",4]],"tool":"iron_tools","tool_durability":70}},
-  {"name":"bertram","profile":{"skill":"farmer","home":"Cottage 5","work":"Farm 1","work_start":6,"work_end":16,"wallet":15,"inventory":[["wheat",5]],"tool":"iron_tools","tool_durability":60}},
-  {"name":"gerda","profile":{"skill":"miller","home":"Mill","work":"Mill","work_start":7,"work_end":16,"wallet":45,"inventory":[["flour",4]],"tool":null,"tool_durability":0}},
-  {"name":"anselm","profile":{"skill":"baker","home":"Bakery","work":"Bakery","work_start":6,"work_end":13,"wallet":32,"inventory":[["bread",6],["flour",2]],"tool":null,"tool_durability":0}},
-  {"name":"volker","profile":{"skill":"blacksmith","home":"Forge","work":"Forge","work_start":7,"work_end":16,"wallet":60,"inventory":[["iron_ore",4],["coal",3]],"tool":null,"tool_durability":0}},
-  {"name":"wulf","profile":{"skill":"carpenter","home":"Carpenter Shop","work":"Carpenter Shop","work_start":7,"work_end":16,"wallet":35,"inventory":[["timber",5]],"tool":"iron_tools","tool_durability":75}},
-  {"name":"liesel","profile":{"skill":"tavern","home":"Tavern","work":"Tavern","work_start":10,"work_end":21,"wallet":55,"inventory":[["ale",6],["wheat",4]],"tool":null,"tool_durability":0}},
-  {"name":"sybille","profile":{"skill":"healer","home":"Healer's Hut","work":"Healer's Hut","work_start":7,"work_end":17,"wallet":28,"inventory":[["herbs",5],["medicine",2]],"tool":null,"tool_durability":0}},
-  {"name":"friedrich","profile":{"skill":"woodcutter","home":"Cottage 7","work":"Forest","work_start":6,"work_end":17,"wallet":22,"inventory":[["timber",3],["firewood",6]],"tool":"iron_tools","tool_durability":85}},
-  {"name":"otto","profile":{"skill":"none","home":"Elder's House","work":"Elder's House","work_start":6,"work_end":21,"wallet":120,"inventory":[],"tool":null,"tool_durability":0}},
-  {"name":"pater_markus","profile":{"skill":"none","home":"Town Hall","work":"Town Hall","work_start":6,"work_end":21,"wallet":25,"inventory":[],"tool":null,"tool_durability":0}},
-  {"name":"dieter","profile":{"skill":"miner","home":"Cottage 8","work":"Mine","work_start":7,"work_end":17,"wallet":18,"inventory":[["iron_ore",2],["coal",1]],"tool":"iron_tools","tool_durability":65}},
-  {"name":"magda","profile":{"skill":"none","home":"Cottage 8","work":"Village Square","work_start":6,"work_end":21,"wallet":10,"inventory":[["bread",2]],"tool":null,"tool_durability":0}},
-  {"name":"heinrich","profile":{"skill":"farmer","home":"Cottage 1","work":"Farm 1","work_start":6,"work_end":16,"wallet":25,"inventory":[["wheat",6],["eggs",3]],"tool":"iron_tools","tool_durability":55}},
-  {"name":"elke","profile":{"skill":"seamstress","home":"Seamstress Cottage","work":"Seamstress Cottage","work_start":7,"work_end":16,"wallet":30,"inventory":[["cloth",3]],"tool":null,"tool_durability":0}},
-  {"name":"rupert","profile":{"skill":"miner","home":"Cottage 3","work":"Mine","work_start":7,"work_end":17,"wallet":20,"inventory":[["iron_ore",3],["coal",2]],"tool":"iron_tools","tool_durability":80}}
-]
-JSON
-)
+SEED_AGENTS_JSON=$(cat "$ROOT/scripts/seeds.json")
 
 ITEMS_INIT_ARGS=$(printf '{"owner_id":"%s"}' "$WORLD_ACCOUNT")
 COIN_INIT_ARGS=$(printf '{"owner_id":"%s","total_supply":"1000000","metadata":{"spec":"ft-1.0.0","name":"eidolon coin","symbol":"COIN","decimals":0}}' "$WORLD_ACCOUNT")

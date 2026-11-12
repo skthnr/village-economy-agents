@@ -225,11 +225,11 @@ pub fn recipe_for(item: &str) -> Option<&'static Recipe> {
     RECIPES.iter().find(|recipe| recipe.output == item)
 }
 
-/// Origin quantity math: floor(base x season x event), all factors in
-/// thousandths. The origin labor bonus (1.5) belongs to the deferred labor
+/// Origin quantity math: floor(base x season), both factors in thousandths.
+/// The origin labor bonus (1.5) belongs to the deferred labor
 /// routing feature, so no labor factor exists here.
-pub fn apply_multipliers(base: u128, season_bps: u32, event_bps: u32) -> u128 {
-    base * (season_bps as u128) * (event_bps as u128) / 1_000_000
+pub fn apply_multipliers(base: u128, season_bps: u32) -> u128 {
+    base * (season_bps as u128) / 1_000
 }
 
 /// Farm items may be produced at any of the three farms; herbs only in the

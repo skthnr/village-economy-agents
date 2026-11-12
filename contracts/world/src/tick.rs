@@ -706,8 +706,7 @@ impl World {
         }
 
         let season_bps = season_multiplier_bps(item, &self.season);
-        let event_bps = 1000u32;
-        if season_bps == 0 || event_bps == 0 {
+        if season_bps == 0 {
             for (input, quantity) in recipe.inputs {
                 self.agent_mint_item(agent, input, *quantity);
             }
@@ -717,7 +716,7 @@ impl World {
             ));
         }
 
-        let quantity = apply_multipliers(recipe.base_qty, season_bps, event_bps);
+        let quantity = apply_multipliers(recipe.base_qty, season_bps);
         if quantity == 0 {
             for (input, input_quantity) in recipe.inputs {
                 self.agent_mint_item(agent, input, *input_quantity);
