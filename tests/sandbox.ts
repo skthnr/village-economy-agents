@@ -659,8 +659,8 @@ export async function mtTransfer(
   }, { deposit: ITEM_DEPOSIT });
 }
 
-export async function runTick(economy: Economy): Promise<void> {
-  await economy.accounts.world.callFunction({
+export async function executeTick(economy: Economy) {
+  return economy.accounts.world.callFunctionRaw({
     contractId: economy.ids.world,
     methodName: "run_tick",
     args: {},

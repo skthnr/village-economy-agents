@@ -40,7 +40,7 @@ export interface RelayerConfig {
   /** Account that pays gas for the outer meta transaction. */
   accountId: string;
   /** Comma-free list of curve-prefixed secret keys (`ed25519:...`) for key rotation. */
-  privateKeys: string[];
+  signerKeys: string[];
 }
 
 interface RelayContext {
@@ -222,7 +222,7 @@ export function createRelayServer(config: RelayerConfig): Server {
   assertConfig(config);
   const provider = new JsonRpcProvider({ url: config.rpcUrl });
   const signer = MultiKeySigner.fromSecretKeys(
-    config.privateKeys as KeyPairString[],
+    config.signerKeys as KeyPairString[],
   );
   const account = new Account(config.accountId, provider, signer);
   const context: RelayContext = { config, account, queue: new SerialQueue() };
@@ -402,8 +402,8 @@ function assertConfig(config: RelayerConfig): void {
       throw new Error(`relayer config: ${field} is required`);
     }
   }
-  if (!Array.isArray(config.privateKeys) || config.privateKeys.length === 0) {
-    throw new Error("relayer config: privateKeys must contain at least one key");
+  if (!Array.isArray(config.signerKeys) || config.signerKeys.length === 0) {
+    throw new Error("relayer config: signerKeys must contain at least one key");
   }
 }
 
@@ -415,11 +415,11 @@ function configFromEnv(): RelayerConfig {
     }
     return value;
   };
-  const privateKeys = required("RELAYER_PRIVATE_KEYS")
+  const signerKeys = required("RELAYER_PRIVATE_KEYS")
     .split(",")
     .map((key) => key.trim())
     .filter((key) => key.length > 0);
-  if (privateKeys.length === 0) {
+  if (signerKeys.length === 0) {
     throw new Error("RELAYER_PRIVATE_KEYS is empty");
   }
   return {
@@ -428,7 +428,7 @@ function configFromEnv(): RelayerConfig {
     coinAccount: required("COIN_ACCOUNT"),
     rpcUrl: process.env.NEAR_RPC_URL?.trim() || DEFAULT_RPC_URL,
     accountId: required("RELAYER_ACCOUNT"),
-    privateKeys,
+    signerKeys,
   };
 }
 

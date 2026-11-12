@@ -8,8 +8,9 @@ taxes, and market settlement. Items are a **NEP-245 multi-token**
 are the 18 village goods. Coin is a **NEP-141 fungible token** with a fixed
 supply and `decimals: 0`.
 
-This repository is an executable spec. The origin simulation is kept unmodified
-under `origin/` as an oracle; see [ATTRIBUTION.md](ATTRIBUTION.md).
+This repository is an executable spec: the contracts, the scripted agents, and
+the test suite are the documentation. See [ATTRIBUTION.md](ATTRIBUTION.md) for
+the origin disclosure and the pinned upstream revision.
 
 ## Architecture
 
@@ -37,23 +38,25 @@ cross-contract flows that own every balance change.
 
 ## Quickstart
 
-Prerequisites:
-
-- Rust 1.95 or newer with the `wasm32-unknown-unknown` target
-- `cargo-near` 0.23.0 and `near-cli-rs` 0.31.1
-- Node.js 22.22.2 or newer and pnpm 10.4.1 or newer
+The demo needs only Node.js: it starts a local `near-sandbox` chain, deploys
+the release contracts, and runs 19 scripted agents for 49 ticks with zero real
+funds, no faucet, and no API keys.
 
 ```bash
 npm install
-npm test
+npm run demo
 ```
 
-Contract build and deploy:
+`npm run demo` prints one snapshot per simulated day. `npm run measure` runs
+the same 49-tick workload and prints gas and wall-clock per tick. `npm test`
+runs the unit, legacy-vector, relayer, and 49-tick simulation suites.
+
+Contract build (needs Rust, `cargo-near`, and `near-cli-rs`):
 
 ```bash
-(cd contracts/items && cargo near build)
-(cd contracts/coin && cargo near build)
-(cd contracts/world && cargo near build)
+(cd contracts/items && cargo near build non-reproducible-wasm)
+(cd contracts/coin && cargo near build non-reproducible-wasm)
+(cd contracts/world && cargo near build non-reproducible-wasm)
 cp .env.example .env
 # edit .env, then
 bash scripts/deploy.sh
@@ -64,6 +67,40 @@ initializes each contract, and prints the storage-registration commands that
 follow. The orchestrator target API is documented by the contract signatures:
 `get_perception`, `submit_actions`, and `run_tick` on the world contract; the
 relayer path is a later wave.
+
+## Dry-run demo
+
+The default run is 49 ticks (three simulated days); set
+`EIDOLON_TICKS=112` for a full seven-day season. The output below is from the
+W4 measurement run on Ubuntu 24.04, one vCPU (numbers vary by host):
+
+```text
+eidolon demo: 19 agents, 49 ticks, zero real funds, scripted policy
+day 1: wealth=642 gini_bps=3848 gdp=0 scarce=meat,medicine
+day 2: wealth=642 gini_bps=3848 gdp=0 scarce=meat,medicine
+day 3: wealth=642 gini_bps=3848 gdp=0 scarce=meat,medicine
+day 4: wealth=642 gini_bps=3848 gdp=0 scarce=meat,medicine
+demo complete: 4 dawn snapshots, 49 ticks
+```
+
+Measured with `npm run measure` on the same host:
+
+```text
+49 ticks in 71.51s; 30.44 Tgas/tick (ubuntu-latest, 2026-11-12)
+storage: 1635400 bytes across world/items/coin
+```
+
+The gas figure is the sum of `receipts_outcome[].outcome.gas_burnt` over the
+49 tick transactions; storage is `view_account.storage_usage` summed over the
+world, items, and coin accounts.
+
+A second run on the same host completed in 71.77 s with the same
+30.44 Tgas/tick and 1,635,400 bytes, confirming the deterministic gas count.
+
+The demo and measurement scripts are `demo.mjs` and `scripts/measure.mjs`;
+both import the same `tests/demo-runner.mjs` loop, so the measured workload is
+the demo workload.
+
 
 ## Environment variables
 
@@ -82,7 +119,7 @@ relayer path is a later wave.
 | `NEAR_AI_MODEL` | Model id for NPC decisions |
 | `WORLD_OWNER_KEY` | World owner secret key used to call `run_tick` |
 | `AGENT_KEYSTORE_DIR` | Directory for generated NPC keys (gitignored) |
-| `TICKS` | Default run horizon |
+| `EIDOLON_TICKS` | Demo/measure horizon (default 49) |
 
 `.env` and `.keys/` are gitignored. No secret value belongs in a tracked file.
 
@@ -104,7 +141,8 @@ Deferred from the hackathon build, deliberately:
 - Multi-village travel and player-controlled agents
 - Loans, hired labor, wages, and barter scanning
 
-`origin/` retains these features for reference and is not part of the port.
+The port covers the shipped economy only. The unmodified origin snapshot is
+not part of this repository.
 
 ## Platform limits
 
@@ -114,11 +152,11 @@ and demo suites inside WSL2 or on a Linux CI runner. Contract builds only need
 the Rust toolchain and do not require a sandbox. Node 22 is the pinned
 maintenance LTS line.
 
-## Origin disclosure
+## Attribution
 
-This is a fork-derived port of the MIT origin project documented in
-[ATTRIBUTION.md](ATTRIBUTION.md) (repository URL, pinned commit `e0656ca`, tree
-`801af5c`, and reuse itemized there). The unmodified snapshot lives in `origin/`.
+This is a fork-derived port of an MIT-licensed origin project. The repository
+URL, pinned commit `e0656ca`, tree `801af5c`, and the itemized reuse are in
+[ATTRIBUTION.md](ATTRIBUTION.md).
 
 ## License
 

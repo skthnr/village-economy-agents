@@ -26,7 +26,7 @@ import {
   postBuyOrder,
   postSellOrder,
   requireAgent,
-  runTick,
+  executeTick,
   startHarness,
   stopHarness,
   submitCoreActions,
@@ -118,7 +118,7 @@ async function runPolicySimulation(economy: Economy, withActions = true): Promis
 
   if (!withActions) {
     for (let tick = 1; tick <= TICKS; tick += 1) {
-      await runTick(economy);
+      await executeTick(economy);
     }
     trace.snapshot = JSON.stringify(await getEconomySnapshot(economy)).replaceAll(
       `.${economy.ids.world}`,
@@ -170,7 +170,7 @@ async function runPolicySimulation(economy: Economy, withActions = true): Promis
       }),
     );
 
-    await runTick(economy);
+    await executeTick(economy);
 
     const [bread, flour, millerFlour, bakerFlour] = await Promise.all([
       mtSupply(economy, "bread"),
@@ -645,7 +645,7 @@ async function runScenario(economy: Economy): Promise<void> {
     if (tick % 10 === 0) {
       console.log(`${economy.tag}: scenario tick ${tick}/${SCENARIO_TICKS}`);
     }
-    await runTick(economy);
+    await executeTick(economy);
 
     const [bread, flour, millerFlour, bakerFlour] = await Promise.all([
       mtSupply(economy, "bread"),

@@ -75,7 +75,7 @@ WORLD_INIT_ARGS=$(printf '{"items_contract":"%s","coin_contract":"%s","seed_agen
   cd "$ROOT/contracts/world"
   cargo near deploy build-non-reproducible-wasm "$WORLD_ACCOUNT" \
     with-init-call new json-args "$WORLD_INIT_ARGS" \
-    prepaid-gas '300 Tgas' attached-deposit '0 NEAR' \
+    prepaid-gas "$((300)) Tgas" attached-deposit '0 NEAR' \
     network-config "$NEAR_NETWORK" sign-with-keychain send
 )
 

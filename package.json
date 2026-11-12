@@ -11,6 +11,8 @@
     "test": "node --import=tsx --test tests/*.test.ts",
     "test:relayer": "node --import=tsx --test tests/relayer.test.ts",
     "test:simulation": "node --import=tsx --test tests/simulation.test.ts",
+    "demo": "node --import=tsx demo.mjs",
+    "measure": "node --import=tsx scripts/measure.mjs",
     "start:relayer": "node --env-file=.env --import=tsx relayer/src/server.ts",
     "typecheck": "tsc --noEmit -p orchestrator/tsconfig.json && tsc --noEmit -p relayer/tsconfig.json",
     "typecheck:relayer": "tsc --noEmit -p relayer/tsconfig.json"

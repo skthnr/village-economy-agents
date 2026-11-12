@@ -51,7 +51,7 @@ pub fn expires_at(tick: u64) -> u64 {
     tick + ORDER_TTL
 }
 
-/// Origin `expireOrders` semantics: an order is gone once `tick` reaches its
+/// Origin expiry semantics: an order is gone once `tick` reaches its
 /// `expires_at` (`expiresAtTick <= time.tick`), so it is fillable only through
 /// the preceding tick.
 pub fn is_expired(order_expires_at: u64, tick: u64) -> bool {

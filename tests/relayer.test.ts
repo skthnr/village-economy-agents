@@ -36,7 +36,7 @@ const CONFIG: RelayerConfig = {
   coinAccount: COIN,
   rpcUrl: "http://127.0.0.1:1",
   accountId: "relayer.eidolon.testnet",
-  privateKeys: [KEY_PAIR.toString()],
+  signerKeys: [KEY_PAIR.toString()],
 };
 
 async function makeSignedDelegate(
