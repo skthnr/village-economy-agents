@@ -92,17 +92,29 @@ async function readStoredKeys(name: string): Promise<StoredAgentKeys | undefined
 }
 
 function parseStoredKeys(stored: StoredAgentKeys, expectedName: string): AgentKeys {
-  const fck = KeyPair.fromString(stored.fck_secret_key as KeyPairString);
-  const market = KeyPair.fromString(stored.market_secret_key as KeyPairString);
+  const fck = parseSecretKey(stored.fck_secret_key, expectedName, "fck");
+  const market = parseSecretKey(stored.market_secret_key, expectedName, "market");
+  const publicKeys = {
+    fck: fck.getPublicKey().toString(),
+    market: market.getPublicKey().toString(),
+  };
+  if (publicKeys.fck === publicKeys.market) {
+    throw new TypeError(`keystore entry for ${expectedName} uses the same ed25519 key for both roles`);
+  }
   return {
     name: expectedName,
     fck,
     market,
-    publicKeys: {
-      fck: fck.getPublicKey().toString(),
-      market: market.getPublicKey().toString(),
-    },
+    publicKeys,
   };
+}
+
+function parseSecretKey(secret: string, agent: string, role: "fck" | "market"): KeyPair {
+  try {
+    return KeyPair.fromString(secret as KeyPairString);
+  } catch {
+    throw new TypeError(`keystore entry for ${agent} has an invalid ${role}_secret_key`);
+  }
 }
 
 function isNotFound(error: unknown): boolean {

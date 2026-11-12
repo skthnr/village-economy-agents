@@ -36,6 +36,10 @@ impl Items {
     ) {
         Self::require_owner();
 
+        if amount.0 == 0 {
+            env::panic_str("items mint amount must be greater than zero");
+        }
+
         let mut mint = Nep245Mint::single(token_id, amount.0, receiver_id);
         if let Some(memo) = memo {
             mint = mint.memo(memo);
@@ -49,7 +53,12 @@ impl Items {
     pub fn burn(&mut self, owner_id: AccountId, token_id: String, amount: U128) {
         Self::require_owner();
 
+        if amount.0 == 0 {
+            env::panic_str("items burn amount must be greater than zero");
+        }
+
         let burn = Nep245Burn::single(token_id, amount.0, owner_id);
+
         if let Err(error) = <Self as Nep245Controller>::burn(self, &burn) {
             env::panic_str(&format!("items burn failed: {error}"));
         }

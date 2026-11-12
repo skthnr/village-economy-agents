@@ -1,0 +1,132 @@
+{
+  "description": "Parity vectors for the integer primitives in contracts/world/src/{market.rs,recipes.rs,tick.rs}. Expected values are hardcoded from the Rust definitions; the TS side must reproduce them exactly.",
+  "constants": {
+    "id_shift": 20,
+    "order_ttl": 16,
+    "price_ring_cap": 10,
+    "ticks_per_day": 16,
+    "days_per_season": 7,
+    "ticks_per_season": 112
+  },
+  "ids": {
+    "order": [
+      { "tick": 0, "seq": 0, "id": 0 },
+      { "tick": 1, "seq": 2, "id": 1048578 },
+      { "tick": 5, "seq": 0, "id": 5242880 },
+      { "tick": 112, "seq": 999, "id": 117441511 },
+      { "tick": 449, "seq": 1048575, "id": 471859199 }
+    ],
+    "fill": [
+      { "tick": 3, "seq": 4, "id": 3145732 },
+      { "tick": 7, "seq": 1, "id": 7340033 },
+      { "tick": 112, "seq": 0, "id": 117440512 },
+      { "tick": 449, "seq": 999, "id": 470811623 }
+    ]
+  },
+  "expires_at": [
+    { "tick": 0, "expires_at": 16 },
+    { "tick": 1, "expires_at": 17 },
+    { "tick": 5, "expires_at": 21 },
+    { "tick": 112, "expires_at": 128 },
+    { "tick": 449, "expires_at": 465 }
+  ],
+  "mean_price": [
+    { "prices": [], "mean": null },
+    { "prices": [5], "mean": 5 },
+    { "prices": [4, 5], "mean": 5 },
+    { "prices": [1, 2], "mean": 2 },
+    { "prices": [3, 4], "mean": 4 },
+    { "prices": [2, 4, 5], "mean": 4 },
+    { "prices": [1, 2, 3, 4], "mean": 3 },
+    { "prices": [5, 5, 6, 6], "mean": 6 },
+    { "prices": [0, 0, 1], "mean": 0 },
+    { "prices": [0, 1, 1], "mean": 1 },
+    { "prices": [99, 100], "mean": 100 },
+    { "prices": [2, 3], "mean": 3 },
+    { "prices": [4, 4, 5], "mean": 4 }
+  ],
+  "price_ring": [
+    {
+      "pushes": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "ring": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      "mean": 7
+    },
+    {
+      "pushes": [5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      "ring": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      "mean": 6
+    },
+    {
+      "pushes": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      "ring": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      "mean": 0
+    },
+    {
+      "pushes": [7],
+      "ring": [7],
+      "mean": 7
+    }
+  ],
+  "season_bps": {
+    "default": 1000,
+    "items": [
+      { "item": "wheat", "bps": [1200, 1500, 1000, 0] },
+      { "item": "flour", "bps": [1000, 1000, 1000, 1000] },
+      { "item": "bread", "bps": [1000, 1000, 1000, 1000] },
+      { "item": "meat", "bps": [1000, 1000, 1200, 800] },
+      { "item": "milk", "bps": [1200, 1000, 800, 600] },
+      { "item": "eggs", "bps": [1500, 1000, 800, 500] },
+      { "item": "vegetables", "bps": [1200, 1500, 1000, 0] },
+      { "item": "herbs", "bps": [1500, 1200, 800, 0] },
+      { "item": "medicine", "bps": [1000, 1000, 1000, 1000] },
+      { "item": "iron_ore", "bps": [1000, 1000, 1000, 800] },
+      { "item": "coal", "bps": [1000, 1000, 1000, 1200] },
+      { "item": "iron_tools", "bps": [1000, 1000, 1000, 1000] },
+      { "item": "timber", "bps": [1000, 1000, 1200, 800] },
+      { "item": "firewood", "bps": [800, 800, 1200, 1500] },
+      { "item": "furniture", "bps": [1000, 1000, 1000, 1000] },
+      { "item": "ale", "bps": [1000, 1200, 1500, 1000] },
+      { "item": "meal", "bps": [1000, 1000, 1000, 1000] },
+      { "item": "cloth", "bps": [1000, 1000, 1000, 1200] }
+    ]
+  },
+  "sleep": {
+    "rolls": [
+      { "tick": 0, "agent_index": 0, "roll": 0 },
+      { "tick": 0, "agent_index": 1, "roll": 1 },
+      { "tick": 0, "agent_index": 2, "roll": 2 },
+      { "tick": 15, "agent_index": 2, "roll": 2 },
+      { "tick": 16, "agent_index": 0, "roll": 19 },
+      { "tick": 16, "agent_index": 2, "roll": 21 },
+      { "tick": 31, "agent_index": 0, "roll": 19 },
+      { "tick": 32, "agent_index": 1, "roll": 39 },
+      { "tick": 112, "agent_index": 0, "roll": 33 },
+      { "tick": 112, "agent_index": 1, "roll": 34 },
+      { "tick": 449, "agent_index": 0, "roll": 32 }
+    ],
+    "qualities": [
+      { "roll": 0, "sickness": 0, "quality": 90 },
+      { "roll": 49, "sickness": 0, "quality": 90 },
+      { "roll": 50, "sickness": 0, "quality": 70 },
+      { "roll": 84, "sickness": 0, "quality": 70 },
+      { "roll": 85, "sickness": 0, "quality": 50 },
+      { "roll": 99, "sickness": 0, "quality": 50 },
+      { "roll": 85, "sickness": 1, "quality": 50 },
+      { "roll": 0, "sickness": 2, "quality": 40 },
+      { "roll": 85, "sickness": 3, "quality": 40 }
+    ]
+  },
+  "calendar": [
+    { "tick": 1, "season": "spring", "day": 1, "hour": 6, "label": "Monday, 06:00" },
+    { "tick": 16, "season": "spring", "day": 1, "hour": 21, "label": "Monday, 21:00" },
+    { "tick": 17, "season": "spring", "day": 2, "hour": 6, "label": "Tuesday, 06:00" },
+    { "tick": 112, "season": "spring", "day": 7, "hour": 21, "label": "Sunday, 21:00" },
+    { "tick": 113, "season": "summer", "day": 1, "hour": 6, "label": "Monday, 06:00" },
+    { "tick": 224, "season": "summer", "day": 7, "hour": 21, "label": "Sunday, 21:00" },
+    { "tick": 225, "season": "autumn", "day": 1, "hour": 6, "label": "Monday, 06:00" },
+    { "tick": 336, "season": "autumn", "day": 7, "hour": 21, "label": "Sunday, 21:00" },
+    { "tick": 337, "season": "winter", "day": 1, "hour": 6, "label": "Monday, 06:00" },
+    { "tick": 448, "season": "winter", "day": 7, "hour": 21, "label": "Sunday, 21:00" },
+    { "tick": 449, "season": "spring", "day": 1, "hour": 6, "label": "Monday, 06:00" }
+  ]
+}

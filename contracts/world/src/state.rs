@@ -20,6 +20,17 @@ pub enum Season {
     Winter,
 }
 
+impl Season {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Season::Spring => "spring",
+            Season::Summer => "summer",
+            Season::Autumn => "autumn",
+            Season::Winter => "winter",
+        }
+    }
+}
+
 #[near(serializers = [json, borsh])]
 #[serde(rename_all = "lowercase")]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -72,6 +83,8 @@ pub struct BodyState {
     pub energy: u8,
     pub sleep_quality: u8,
     pub sickness: u8,
+    /// Consecutive ticks at hunger 5. `DEAD_STARVATION` is the permanent marker.
+    pub starvation_ticks: u8,
 }
 
 #[near(serializers = [json, borsh])]
@@ -168,4 +181,77 @@ pub struct WealthEntry {
     pub agent: AccountId,
     pub wallet: U128,
     pub inventory_value: U128,
+}
+
+/// Body section of the agent perception prompt, byte-compatible with
+/// `orchestrator/src/perception.ts` `Perception.body`.
+#[near(serializers = [json])]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PerceptionBody {
+    pub hunger: u8,
+    pub energy: u8,
+    pub sleep_quality: u8,
+    pub sickness: u8,
+}
+
+/// Profile section of the agent perception prompt.
+#[near(serializers = [json])]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PerceptionProfile {
+    pub skill: String,
+    pub home: String,
+    pub work: String,
+    pub work_start: u8,
+    pub work_end: u8,
+}
+
+/// One inventory line in the perception prompt.
+#[near(serializers = [json])]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InventoryLine {
+    pub item: String,
+    pub quantity: U128,
+}
+
+/// Wallet + inventory mirror section of the perception prompt.
+#[near(serializers = [json])]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MirrorView {
+    pub wallet: U128,
+    pub inventory: Vec<InventoryLine>,
+}
+
+/// Equipped tool section of the perception prompt.
+#[near(serializers = [json])]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ToolView {
+    pub item: String,
+    pub durability: u8,
+}
+
+/// One price-index line in the perception prompt.
+#[near(serializers = [json])]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PriceLine {
+    pub item: String,
+    pub price: U128,
+}
+
+/// JSON view returned by `world::get_perception`; the orchestrator parses this
+/// into `Perception` and rejects a missing or mistyped field.
+#[near(serializers = [json])]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Perception {
+    pub tick: u64,
+    pub time: String,
+    pub season: Season,
+    pub weather: String,
+    pub location: String,
+    pub body: PerceptionBody,
+    pub profile: PerceptionProfile,
+    pub mirrors: MirrorView,
+    pub tool: Option<ToolView>,
+    pub price_index: Vec<PriceLine>,
+    pub order_book: Vec<Order>,
+    pub feedback: Vec<String>,
 }

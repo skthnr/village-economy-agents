@@ -72,3 +72,10 @@ pub trait ExtCoin {
         registration_only: Option<bool>,
     ) -> StorageBalance;
 }
+
+/// Callback into the world itself; the `#[callback_result]` argument is
+/// injected from the preceding promise result, not serialized here.
+#[ext_contract(ext_self)]
+pub trait ExtSelf {
+    fn on_buy_fill(&mut self, fill_id: u64, order_id: u64, buyer: AccountId);
+}
