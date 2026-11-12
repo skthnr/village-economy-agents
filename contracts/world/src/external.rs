@@ -66,6 +66,9 @@ pub trait ExtCoin {
         msg: String,
     ) -> Promise;
 
+    /// Owner-authorized levy transfer (world is the coin owner).
+    fn tax(&self, sender_id: AccountId, receiver_id: AccountId, amount: U128);
+
     fn storage_deposit(
         &self,
         account_id: Option<AccountId>,

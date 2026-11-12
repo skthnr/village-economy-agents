@@ -4,14 +4,21 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "orchestrator"
+    "orchestrator",
+    "relayer"
   ],
   "scripts": {
     "test": "node --import=tsx --test tests/*.test.ts",
-    "typecheck": "tsc --noEmit -p orchestrator/tsconfig.json"
+    "test:relayer": "node --import=tsx --test tests/relayer.test.ts",
+    "test:simulation": "node --import=tsx --test tests/simulation.test.ts",
+    "start:relayer": "node --env-file=.env --import=tsx relayer/src/server.ts",
+    "typecheck": "tsc --noEmit -p orchestrator/tsconfig.json && tsc --noEmit -p relayer/tsconfig.json",
+    "typecheck:relayer": "tsc --noEmit -p relayer/tsconfig.json"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "near-api-js": "7.5.3",
+    "near-sandbox": "0.3.5",
     "tsx": "4.23.15",
     "typescript": "7.0.2"
   },

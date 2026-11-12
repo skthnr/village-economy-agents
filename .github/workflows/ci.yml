@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.2"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.95.0
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Cargo build output
+        uses: Swatinem/rust-cache@v2
+
+      - name: Cache cargo-near
+        id: cargo-near
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-near
+          key: cargo-near-0.23.0-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install cargo-near
+        if: steps.cargo-near.outputs.cache-hit != 'true'
+        run: cargo install cargo-near --version 0.23.0 --locked
+
+      - name: Build contracts
+        run: |
+          for crate in items coin world; do
+            (cd "contracts/${crate}" && cargo near build non-reproducible-wasm)
+          done
+
+      - name: Install node dependencies
+        run: npm install --no-package-lock
+
+      - name: Run sandbox test suite
+        env:
+          EIDOLON_TICKS: "8"
+        run: node --import=tsx --test tests/*.test.ts

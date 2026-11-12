@@ -16,20 +16,17 @@ import {
   resolvePolicyMode,
   type PolicyMode,
 } from "./policy-agents.js";
+import { selectCoreActions, submitCoreActionsViaRelayer } from "./relayer.js";
 
 const DEFAULT_TICKS = 112;
-const SUBMIT_ACTIONS_GAS = teraToGas(30);
-const TOKEN_CALL_GAS = teraToGas(30);
+const WORLD_CALL_GAS = teraToGas(30);
+const TOKEN_CALL_GAS = teraToGas(100);
+const BUY_CALL_GAS = teraToGas(160);
+const CANCEL_CALL_GAS = teraToGas(60);
 const RUN_TICK_GAS = teraToGas(600);
 const NO_DEPOSIT = 0n;
 const ONE_YOCTO = 1n;
-const STORAGE_DEPOSIT = 2_500_000_000_000_000_000_000n;
-const CORE_ACTION_TYPES: Readonly<Record<string, true>> = {
-  move_to: true,
-  speak: true,
-  produce: true,
-  eat: true,
-};
+const ORDER_DEPOSIT = 10_000_000_000_000_000_000_000n;
 
 interface RunConfig {
   worldAccount: string;
@@ -39,6 +36,7 @@ interface RunConfig {
   ownerKey: string;
   ticks: number;
   policy: PolicyMode;
+  relayerUrl: string | undefined;
   hasAiKey: boolean;
 }
 
@@ -96,7 +94,7 @@ async function main(): Promise<void> {
         throw new Error(`missing signer account for ${name}`);
       }
 
-      submitted += await submitActions(fckAccount, config.worldAccount, actions);
+      submitted += await submitActions(fckAccount, config, actions);
       submitted += await executeOrderActions(marketAccount, config, actions);
     }
 
@@ -146,6 +144,7 @@ function loadConfig(argv: readonly string[]): RunConfig {
     throw new Error("ticks must be a positive integer");
   }
 
+  const relayerUrl = (process.env.RELAYER_URL ?? "").trim();
   return {
     worldAccount: requireEnv("WORLD_ACCOUNT"),
     itemsAccount: requireEnv("ITEMS_ACCOUNT"),
@@ -154,6 +153,7 @@ function loadConfig(argv: readonly string[]): RunConfig {
     ownerKey: requireEnv("WORLD_OWNER_KEY"),
     ticks,
     policy,
+    relayerUrl: relayerUrl.length === 0 ? undefined : relayerUrl,
     hasAiKey: (process.env.NEAR_AI_API_KEY ?? "").length > 0,
   };
 }
@@ -202,16 +202,20 @@ async function callView<T>(
 
 async function submitActions(
   account: Account,
-  worldAccount: string,
+  config: RunConfig,
   actions: readonly Action[],
 ): Promise<number> {
-  const core = actions.filter((action) => CORE_ACTION_TYPES[action.action_type] === true);
+  if (config.relayerUrl !== undefined) {
+    return submitCoreActionsViaRelayer(account, config.worldAccount, actions);
+  }
+
+  const core = selectCoreActions(actions);
   if (core.length === 0) return 0;
   await account.callFunction({
-    contractId: worldAccount,
+    contractId: config.worldAccount,
     methodName: "submit_actions",
     args: { actions: core },
-    gas: SUBMIT_ACTIONS_GAS,
+    gas: WORLD_CALL_GAS,
     deposit: NO_DEPOSIT,
   });
   return core.length;
@@ -242,8 +246,8 @@ async function executeOrderActions(
           contractId: config.worldAccount,
           methodName: "post_order",
           args: { item: action.item, quantity: action.quantity, price: action.price },
-          gas: SUBMIT_ACTIONS_GAS,
-          deposit: STORAGE_DEPOSIT,
+          gas: WORLD_CALL_GAS,
+          deposit: ORDER_DEPOSIT,
         });
       } else {
         await account.callFunction({
@@ -280,7 +284,7 @@ async function executeOrderActions(
           memo: null,
           msg: `buy:${action.order_id}:${action.max_price}`,
         },
-        gas: TOKEN_CALL_GAS,
+        gas: BUY_CALL_GAS,
         deposit: ONE_YOCTO,
       });
       submitted += 1;
@@ -293,7 +297,7 @@ async function executeOrderActions(
         contractId: config.worldAccount,
         methodName: "cancel_order",
         args: { order_id: action.order_id },
-        gas: SUBMIT_ACTIONS_GAS,
+        gas: CANCEL_CALL_GAS,
         deposit: NO_DEPOSIT,
       });
       submitted += 1;

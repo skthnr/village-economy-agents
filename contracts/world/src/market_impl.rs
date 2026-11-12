@@ -26,7 +26,7 @@ use crate::{
 
 const GAS_FOR_TOKEN_CALL: Gas = Gas::from_tgas(30);
 const GAS_FOR_COIN_TRANSFER: Gas = Gas::from_tgas(15);
-const GAS_FOR_CALLBACK: Gas = Gas::from_tgas(10);
+const GAS_FOR_CALLBACK: Gas = Gas::from_tgas(60);
 const ONE_YOCTO: NearToken = NearToken::from_yoctonear(1);
 const SEQUENCE_LIMIT: u64 = 1 << 20;
 
@@ -68,6 +68,7 @@ impl World {
                 price,
                 posted_tick: self.tick,
                 expires_at: expires_at(self.tick),
+                pending_fills: 0,
             },
         );
         Event::OrderPosted {
@@ -94,6 +95,9 @@ impl World {
             .unwrap_or_else(|| env::panic_str("cancel_order: unknown order"));
         if order.agent_id != agent {
             env::panic_str("cancel_order: only the order owner may cancel");
+        }
+        if order.pending_fills > 0 {
+            env::panic_str("cancel_order: order has a fill in flight");
         }
         self.orders.remove(&order_id);
 
@@ -184,6 +188,7 @@ impl World {
 
         if let Some(stored) = self.orders.get_mut(&target_order_id) {
             stored.quantity = stored.quantity.saturating_sub(quantity);
+            stored.pending_fills = stored.pending_fills.saturating_add(1);
         }
         self.mirror_remove_coin(&sender_id, cost);
 
@@ -258,6 +263,7 @@ impl World {
                 price,
                 posted_tick: self.tick,
                 expires_at: expires_at(self.tick),
+                pending_fills: 0,
             },
         );
         Event::OrderPosted {
@@ -293,8 +299,11 @@ impl World {
                 Some(order) => {
                     self.record_item_receipt(&buyer, &order.item, fill.quantity);
                     let seller = order.agent_id.clone();
-                    if order.quantity == 0 {
+                    let pending = order.pending_fills.saturating_sub(1);
+                    if order.quantity == 0 && pending == 0 {
                         self.orders.remove(&order_id);
+                    } else if let Some(stored) = self.orders.get_mut(&order_id) {
+                        stored.pending_fills = pending;
                     }
                     self.mirror_add_coin(&seller, fill.cost);
                     self.update_price_index(&order.item, order.price);
@@ -328,7 +337,7 @@ impl World {
                         let durability =
                             self.tool_state.get(&buyer).copied().unwrap_or(0);
                         if !equipped || durability == 0 {
-                            self.mirror_remove_item(&buyer, "iron_tools", 1);
+                            self.agent_burn_item(&buyer, "iron_tools", 1);
                             self.equip_tool(&buyer);
                             self.push_feedback(
                                 &buyer,
@@ -351,6 +360,7 @@ impl World {
             Err(_) => {
                 if let Some(stored) = self.orders.get_mut(&order_id) {
                     stored.quantity = stored.quantity.saturating_add(fill.quantity);
+                    stored.pending_fills = stored.pending_fills.saturating_sub(1);
                 }
                 self.mirror_add_coin(&buyer, fill.cost);
                 self.pay_coin(buyer.clone(), fill.cost);
@@ -396,7 +406,7 @@ impl World {
         let expired: Vec<Order> = self
             .orders
             .values()
-            .filter(|order| is_expired(order.expires_at, tick))
+            .filter(|order| is_expired(order.expires_at, tick) && order.pending_fills == 0)
             .cloned()
             .collect();
         for order in expired {
@@ -519,5 +529,112 @@ impl World {
         }
         let next = self.mirror_coin(agent).saturating_sub(amount);
         self.coin_balance_mirror.insert(agent.clone(), next);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::market::order_id;
+    use near_sdk::test_utils::{accounts, VMContextBuilder};
+    use near_sdk::testing_env;
+
+    fn setup() -> World {
+        let mut context = VMContextBuilder::new();
+        context
+            .current_account_id(accounts(0))
+            .predecessor_account_id(accounts(0));
+        testing_env!(context.build());
+        World::new(accounts(1), accounts(2), Vec::new())
+    }
+
+    fn insert_sell(world: &mut World, quantity: u128, pending: u32) -> u64 {
+        let id = order_id(1, 0);
+        world.orders.insert(
+            id,
+            Order {
+                id,
+                agent_id: accounts(3),
+                side: OrderSide::Sell,
+                item: "wheat".to_string(),
+                quantity,
+                price: 2,
+                posted_tick: 1,
+                expires_at: 17,
+                pending_fills: pending,
+            },
+        );
+        id
+    }
+
+    #[test]
+    fn filled_order_commits_seller_payment_and_buyer_items() {
+        let mut world = setup();
+        let buyer = accounts(4);
+        world.coin_balance_mirror.insert(buyer.clone(), 0);
+        let id = insert_sell(&mut world, 0, 1);
+        world.pending_fills.insert(
+            10,
+            BuyFill {
+                fill_id: 10,
+                order_id: id,
+                buyer: buyer.clone(),
+                quantity: 5,
+                cost: 10,
+            },
+        );
+
+        world.on_buy_fill(10, id, buyer.clone(), Ok(()));
+
+        assert!(world.orders.get(&id).is_none());
+        assert_eq!(world.mirror_coin(&accounts(3)), 10);
+        assert_eq!(world.mirror_item_qty(&buyer, "wheat"), 5);
+    }
+
+    #[test]
+    fn failed_fill_restores_reservation_and_refunds_buyer() {
+        let mut world = setup();
+        let buyer = accounts(4);
+        world.coin_balance_mirror.insert(buyer.clone(), 0);
+        let id = insert_sell(&mut world, 3, 1);
+        world.pending_fills.insert(
+            11,
+            BuyFill {
+                fill_id: 11,
+                order_id: id,
+                buyer: buyer.clone(),
+                quantity: 2,
+                cost: 4,
+            },
+        );
+
+        world.on_buy_fill(11, id, buyer.clone(), Err(PromiseError::Failed));
+
+        let order = world.orders.get(&id).cloned().expect("order restored");
+        assert_eq!(order.quantity, 5);
+        assert_eq!(order.pending_fills, 0);
+        assert_eq!(world.mirror_coin(&buyer), 4);
+    }
+
+    #[test]
+    #[should_panic(expected = "fill in flight")]
+    fn cancel_rejects_order_with_pending_fill() {
+        let mut world = setup();
+        let id = insert_sell(&mut world, 3, 1);
+        let mut context = VMContextBuilder::new();
+        context
+            .current_account_id(accounts(0))
+            .predecessor_account_id(accounts(3));
+        testing_env!(context.build());
+        let _ = world.cancel_order(id);
+    }
+
+    #[test]
+    fn prune_defers_order_with_pending_fill() {
+        let mut world = setup();
+        let id = insert_sell(&mut world, 3, 1);
+        world.tick = 20;
+        world.prune_expired_orders();
+        assert!(world.orders.get(&id).is_some());
     }
 }

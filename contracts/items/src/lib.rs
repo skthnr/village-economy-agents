@@ -6,6 +6,10 @@ use near_sdk_contract_tools::{
 };
 
 const STORAGE_MIN_YOCTO: u128 = 2_500_000_000_000_000_000_000;
+const ALL_ITEMS: [&str; 18] = [
+    "wheat", "flour", "bread", "meat", "milk", "eggs", "vegetables", "herbs", "medicine",
+    "iron_ore", "coal", "iron_tools", "timber", "firewood", "furniture", "ale", "meal", "cloth",
+];
 
 #[derive(MultiToken, Owner, PanicOnDefault)]
 #[near(contract_state)]
@@ -23,6 +27,14 @@ impl Items {
             min: NearToken::from_yoctonear(STORAGE_MIN_YOCTO),
             max: None,
         });
+
+        for item in ALL_ITEMS {
+            if let Err(error) =
+                <Self as Nep245Controller>::create_token(&mut contract, item.to_string())
+            {
+                env::panic_str(&format!("items token init failed for {item}: {error}"));
+            }
+        }
 
         contract
     }

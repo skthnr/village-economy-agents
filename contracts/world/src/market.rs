@@ -51,10 +51,11 @@ pub fn expires_at(tick: u64) -> u64 {
     tick + ORDER_TTL
 }
 
-/// Orders expire only after their full TTL has elapsed; an order remains
-/// fillable on its `expires_at` tick.
+/// Origin `expireOrders` semantics: an order is gone once `tick` reaches its
+/// `expires_at` (`expiresAtTick <= time.tick`), so it is fillable only through
+/// the preceding tick.
 pub fn is_expired(order_expires_at: u64, tick: u64) -> bool {
-    order_expires_at < tick
+    order_expires_at <= tick
 }
 
 /// Parses the NEP-141 receiver payload `buy:<order_id>:<max_price>`.
@@ -130,14 +131,14 @@ mod tests {
     }
 
     #[test]
-    fn expiry_boundary_is_strict() {
+    fn expiry_boundary_matches_origin() {
         let posted = 1;
         assert_eq!(expires_at(posted), posted + ORDER_TTL);
         assert!(!is_expired(expires_at(posted), posted));
-        assert!(!is_expired(expires_at(posted), expires_at(posted)));
-        assert!(is_expired(expires_at(posted), expires_at(posted) + 1));
+        assert!(!is_expired(expires_at(posted), expires_at(posted) - 1));
+        assert!(is_expired(expires_at(posted), expires_at(posted)));
         assert!(!is_expired(17, 1));
-        assert!(is_expired(17, 18));
+        assert!(is_expired(17, 17));
     }
 
     #[test]

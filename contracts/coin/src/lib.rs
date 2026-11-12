@@ -32,4 +32,18 @@ impl Coin {
 
         contract
     }
+
+    /// Owner-authorized levy transfer used by the world's Monday tax phase.
+    /// The world is the coin owner; this moves an NPC wallet to the elder
+    /// without requiring the NPC's signature.
+    pub fn tax(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: U128) {
+        Self::require_owner();
+        if amount.0 == 0 {
+            return;
+        }
+        let transfer = Nep141Transfer::new(amount.0, sender_id, receiver_id);
+        if let Err(error) = <Self as Nep141Controller>::transfer(self, &transfer) {
+            env::panic_str(&format!("coin tax failed: {error}"));
+        }
+    }
 }

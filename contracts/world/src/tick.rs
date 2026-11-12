@@ -6,14 +6,14 @@ use crate::{
     body::{
         energy_after_noon, hunger_after_dawn, hunger_after_eating, hunger_on_hour, inedible_hint,
         is_dead, is_starved, satiation_for, sickness_after_dawn, sickness_after_winter,
-        sleep_energy, spoil_ticks_for, DEAD_STARVATION, DURABILITY_LOSS, HUNGER_MAX, SPOIL_TICKS,
+        sleep_energy, DEAD_STARVATION, DURABILITY_LOSS, HUNGER_MAX, SPOIL_TICKS,
     },
     events::Event,
     market::trade_volume_slot,
     recipes::{
         apply_multipliers, recipe_for, season_multiplier_bps, valid_production_location, ALL_ITEMS,
     },
-    state::{Action, ActionType, BodyState, EconomySnapshot, OrderSide, Season, WealthEntry},
+    state::{Action, ActionType, EconomySnapshot, OrderSide, Season, WealthEntry},
     World,
 };
 
@@ -373,12 +373,17 @@ impl World {
 
                 let free = self.mirror_item_qty(&agent, item);
                 let mut cancelled: Vec<crate::state::Order> = Vec::new();
+                let mut deferred = false;
                 for order in self.orders.values() {
                     if order.side == OrderSide::Sell
                         && order.agent_id == agent
                         && order.item.as_str() == item
                     {
-                        cancelled.push(order.clone());
+                        if order.pending_fills > 0 {
+                            deferred = true;
+                        } else {
+                            cancelled.push(order.clone());
+                        }
                     }
                 }
                 let escrowed: u128 = cancelled
@@ -405,7 +410,9 @@ impl World {
                     }
                     .emit();
                 }
-                self.spoils_at.remove(&key);
+                if !deferred {
+                    self.spoils_at.remove(&key);
+                }
 
                 if total > 0 {
                     self.push_feedback(
@@ -437,6 +444,9 @@ impl World {
             }
             self.mirror_remove_coin(&agent, tax);
             self.mirror_add_coin(&elder, tax);
+            let _ = crate::external::ext_coin::ext(self.coin_contract.clone())
+                .with_static_gas(near_sdk::Gas::from_tgas(10))
+                .tax(agent.clone(), elder.clone(), U128(tax));
             self.total_tax_collected = self.total_tax_collected.saturating_add(tax);
         }
     }

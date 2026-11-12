@@ -50,6 +50,10 @@ pub struct Order {
     pub price: u128,
     pub posted_tick: u64,
     pub expires_at: u64,
+    /// Fills reserved from this order whose item transfer has not settled.
+    /// Internal state only; never part of the JSON order-book shape.
+    #[serde(skip)]
+    pub pending_fills: u32,
 }
 
 #[near(serializers = [json, borsh])]

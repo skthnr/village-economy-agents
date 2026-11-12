@@ -37,7 +37,10 @@ use crate::{
 
 /// NEP-145 registration minimum shared with the items and coin contracts.
 const STORAGE_DEPOSIT_YOCTO: u128 = 2_500_000_000_000_000_000_000;
-/// Origin account-creation funding (0.01 NEAR per sub-account).
+/// Items storage headroom per agent (multiple token balances, trade receipts).
+const AGENT_ITEMS_DEPOSIT_YOCTO: u128 = 10_000_000_000_000_000_000_000;
+/// Items escrow headroom for the world's own MT balances (0.1 NEAR).
+const WORLD_ITEMS_DEPOSIT_YOCTO: u128 = 100_000_000_000_000_000_000_000;
 const AGENT_CREATION_TRANSFER_YOCTO: u128 = 10_000_000_000_000_000_000_000;
 /// 600 Tgas tick / factory budget is an orchestrator attach; these bound each hop.
 const GAS_FOR_ITEMS_CALL: Gas = Gas::from_tgas(20);
@@ -198,58 +201,23 @@ impl World {
         self.pending_actions.insert(agent, actions);
     }
 
-    /// Create the on-chain sub-account for a seeded NPC, issue its gas-only
-    /// function-call key, register it on items+coin, and seed its wallet.
+    /// Create the on-chain sub-account for a seeded NPC with only the gas-only
+    /// function-call key (doc signature).
     #[payable]
     pub fn create_agent(&mut self, name: String, public_key: PublicKey) -> Promise {
-        self.assert_owner();
-        let current = env::current_account_id();
-        let agent: AccountId = format!("{name}.{current}")
-            .parse()
-            .unwrap_or_else(|_| env::panic_str("create_agent: invalid agent name"));
-        let profile = self
-            .agents
-            .get(&agent)
-            .cloned()
-            .unwrap_or_else(|| env::panic_str("create_agent: name is not a seeded agent"));
-        let allowance =
-            Allowance::limited(NearToken::from_near(8)).unwrap_or(Allowance::Unlimited);
-        let deposit = NearToken::from_yoctonear(STORAGE_DEPOSIT_YOCTO);
+        self.create_agent_inner(name, public_key, None)
+    }
 
-        self.coin_balance_mirror.insert(agent.clone(), profile.wallet);
-
-        let mut promise = Promise::new(agent.clone())
-            .create_account()
-            .transfer(NearToken::from_yoctonear(AGENT_CREATION_TRANSFER_YOCTO))
-            .add_access_key_allowance(public_key, allowance, current, "submit_actions")
-            .then(
-                ext_items::ext(self.items_contract.clone())
-                    .with_static_gas(GAS_FOR_ITEMS_CALL)
-                    .with_attached_deposit(deposit)
-                    .storage_deposit(Some(agent.clone()), Some(true)),
-            )
-            .then(
-                ext_coin::ext(self.coin_contract.clone())
-                    .with_static_gas(GAS_FOR_COIN_CALL)
-                    .with_attached_deposit(deposit)
-                    .storage_deposit(Some(agent.clone()), Some(true)),
-            )
-            .then(
-                ext_coin::ext(self.coin_contract.clone())
-                    .with_static_gas(GAS_FOR_COIN_CALL)
-                    .with_attached_deposit(ONE_YOCTO)
-                    .ft_transfer(agent.clone(), U128(profile.wallet), None),
-            );
-
-        for (item, quantity) in &profile.inventory {
-            promise = promise.then(
-                ext_items::ext(self.items_contract.clone())
-                    .with_static_gas(GAS_FOR_ITEMS_CALL)
-                    .mint(agent.clone(), item.clone(), U128(*quantity), None),
-            );
-        }
-
-        promise
+    /// Factory variant issuing both orchestrator-held keys in the creation
+    /// batch: the gas-only FCK and the full-access market key.
+    #[payable]
+    pub fn create_agent_with_keys(
+        &mut self,
+        name: String,
+        fck_public_key: PublicKey,
+        market_public_key: PublicKey,
+    ) -> Promise {
+        self.create_agent_inner(name, fck_public_key, Some(market_public_key))
     }
 
     /// Register the world itself as an items holder (escrow storage) and a coin
@@ -258,17 +226,18 @@ impl World {
     pub fn register_world(&mut self) -> Promise {
         self.assert_owner();
         let current = env::current_account_id();
-        let deposit = NearToken::from_yoctonear(STORAGE_DEPOSIT_YOCTO);
+        let items_deposit = NearToken::from_yoctonear(WORLD_ITEMS_DEPOSIT_YOCTO);
+        let coin_deposit = NearToken::from_yoctonear(STORAGE_DEPOSIT_YOCTO);
 
         ext_items::ext(self.items_contract.clone())
             .with_static_gas(GAS_FOR_ITEMS_CALL)
-            .with_attached_deposit(deposit)
-            .storage_deposit(Some(current.clone()), Some(true))
+            .with_attached_deposit(items_deposit)
+            .storage_deposit(Some(current.clone()), Some(false))
             .then(
                 ext_coin::ext(self.coin_contract.clone())
                     .with_static_gas(GAS_FOR_COIN_CALL)
-                    .with_attached_deposit(deposit)
-                    .storage_deposit(Some(current), Some(true)),
+                    .with_attached_deposit(coin_deposit)
+                    .storage_deposit(Some(current), Some(false)),
             )
     }
 
@@ -366,6 +335,66 @@ impl World {
 }
 
 impl World {
+    pub(crate) fn create_agent_inner(
+        &mut self,
+        name: String,
+        fck_public_key: PublicKey,
+        market_public_key: Option<PublicKey>,
+    ) -> Promise {
+        self.assert_owner();
+        let current = env::current_account_id();
+        let agent: AccountId = format!("{name}.{current}")
+            .parse()
+            .unwrap_or_else(|_| env::panic_str("create_agent: invalid agent name"));
+        let profile = self
+            .agents
+            .get(&agent)
+            .cloned()
+            .unwrap_or_else(|| env::panic_str("create_agent: name is not a seeded agent"));
+        let allowance =
+            Allowance::limited(NearToken::from_near(8)).unwrap_or(Allowance::Unlimited);
+        let items_deposit = NearToken::from_yoctonear(AGENT_ITEMS_DEPOSIT_YOCTO);
+        let coin_deposit = NearToken::from_yoctonear(STORAGE_DEPOSIT_YOCTO);
+
+        let mut create = Promise::new(agent.clone())
+            .create_account()
+            .transfer(NearToken::from_yoctonear(AGENT_CREATION_TRANSFER_YOCTO))
+            .add_access_key_allowance(fck_public_key, allowance, current, "submit_actions");
+        if let Some(market_public_key) = market_public_key {
+            create = create.add_full_access_key(market_public_key);
+        }
+
+        let mut promise = create
+            .then(
+                ext_items::ext(self.items_contract.clone())
+                    .with_static_gas(GAS_FOR_ITEMS_CALL)
+                    .with_attached_deposit(items_deposit)
+                    .storage_deposit(Some(agent.clone()), Some(false)),
+            )
+            .then(
+                ext_coin::ext(self.coin_contract.clone())
+                    .with_static_gas(GAS_FOR_COIN_CALL)
+                    .with_attached_deposit(coin_deposit)
+                    .storage_deposit(Some(agent.clone()), Some(false)),
+            )
+            .then(
+                ext_coin::ext(self.coin_contract.clone())
+                    .with_static_gas(GAS_FOR_COIN_CALL)
+                    .with_attached_deposit(ONE_YOCTO)
+                    .ft_transfer(agent.clone(), U128(profile.wallet), None),
+            );
+
+        for (item, quantity) in &profile.inventory {
+            promise = promise.then(
+                ext_items::ext(self.items_contract.clone())
+                    .with_static_gas(GAS_FOR_ITEMS_CALL)
+                    .mint(agent.clone(), item.clone(), U128(*quantity), None),
+            );
+        }
+
+        promise
+    }
+
     fn assert_owner(&self) {
         if env::predecessor_account_id() != self.owner {
             env::panic_str("only the world owner may call this method");
@@ -780,6 +809,7 @@ mod tests {
                 price: 2,
                 posted_tick: 1,
                 expires_at: 17,
+                pending_fills: 0,
             }],
             feedback: vec!["ok".to_string()],
         };
