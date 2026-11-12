@@ -6,10 +6,10 @@ use crate::{
     body::{
         energy_after_noon, hunger_after_dawn, hunger_after_eating, hunger_on_hour, inedible_hint,
         is_dead, is_starved, satiation_for, sickness_after_dawn, sickness_after_winter,
-        sleep_energy, spoil_ticks_for, DEAD_STARVATION, DURABILITY_LOSS, DURABILITY_MAX,
-        HUNGER_MAX, SPOIL_TICKS, STARVATION_TICKS,
+        sleep_energy, spoil_ticks_for, DEAD_STARVATION, DURABILITY_LOSS, HUNGER_MAX, SPOIL_TICKS,
     },
     events::Event,
+    market::trade_volume_slot,
     recipes::{
         apply_multipliers, recipe_for, season_multiplier_bps, valid_production_location, ALL_ITEMS,
     },
@@ -141,6 +141,18 @@ pub fn tax_for(wallet: u128, bps: u16) -> u128 {
     wallet.saturating_mul(bps as u128) / 10_000
 }
 
+/// Origin `OPENING_HOURS`: hour index within the day (0 = 06:00, 15 = 21:00).
+/// A location absent from this table is always open.
+pub fn opening_hours(location: &str) -> Option<(u8, u8)> {
+    match location {
+        "Tavern" => Some((4, 15)),
+        "Bakery" => Some((0, 8)),
+        "Forge" | "Carpenter Shop" | "Mill" => Some((1, 10)),
+        "Healer's Hut" => Some((1, 11)),
+        _ => None,
+    }
+}
+
 /// Origin Gini coefficient rounded to basis points.
 pub fn gini_bps(wallets: &[u128]) -> u32 {
     if wallets.is_empty() {
@@ -178,6 +190,8 @@ impl World {
     /// and increments `self.tick` after this returns.
     pub(crate) fn run_tick_phases(&mut self) {
         let tick = self.tick;
+        // The volume ring is zeroed once per tick; trades settle into it after.
+        self.trade_volume[trade_volume_slot(tick)] = 0;
         Event::TickStarted {
             tick,
             time: time_label(tick),
@@ -190,6 +204,7 @@ impl World {
         // this tick generates new feedback.
         self.clear_feedback();
 
+        self.enforce_opening_hours(tick);
         if is_first_tick_of_day(tick) {
             self.dawn_phase(tick);
         }
@@ -214,6 +229,29 @@ impl World {
         self.check_spoilage(tick);
         if is_week_start(tick) {
             self.collect_tax();
+        }
+    }
+
+    /// Origin `enforceOpeningHours`: a closed location sends the agent home.
+    /// Laws that modify hours are deferred; the base table is origin-exact.
+    fn enforce_opening_hours(&mut self, tick: u64) {
+        let hour_index = hour_of_day(tick).saturating_sub(6);
+        for agent in self.sorted_agents() {
+            let location = self.location_of(&agent);
+            let bare = location.rsplit(':').next().unwrap_or(location.as_str());
+            let Some((open, close)) = opening_hours(bare) else {
+                continue;
+            };
+            if hour_index < open || hour_index >= close {
+                let home = self
+                    .agents
+                    .get(&agent)
+                    .map(|profile| profile.home.clone())
+                    .unwrap_or_default();
+                if !home.is_empty() && home != location {
+                    self.locations.insert(agent, home);
+                }
+            }
         }
     }
 
@@ -347,6 +385,7 @@ impl World {
                     .iter()
                     .fold(0u128, |sum, order| sum.saturating_add(order.quantity));
                 let total = free.saturating_add(escrowed);
+                let had_orders = !cancelled.is_empty();
 
                 if free > 0 {
                     self.agent_burn_item(&agent, item, free);
@@ -374,7 +413,7 @@ impl World {
                         format!("Your {total} {item} spoiled overnight."),
                     );
                 }
-                if !cancelled.is_empty() {
+                if had_orders {
                     self.push_feedback(
                         &agent,
                         format!("Your sell order for {item} was cancelled (spoiled)."),
@@ -493,10 +532,7 @@ impl World {
                     }
                     ActionType::Produce => {
                         let item = action.item.clone().unwrap_or_default();
-                        let location = action
-                            .location
-                            .clone()
-                            .unwrap_or_else(|| self.location_of(&agent));
+                        let location = self.location_of(&agent);
                         let result = if item.is_empty() {
                             let message = "[Can't produce] No item specified.".to_string();
                             self.push_feedback(&agent, &message);
@@ -726,7 +762,7 @@ impl World {
                 .get(&item.to_string())
                 .copied()
                 .unwrap_or(0);
-            price_index.push((item.to_string(), U128(price)));
+            price_index.push((item.to_string(), U128(price as u128)));
         }
 
         let mut scarcity_alerts = Vec::new();
@@ -747,7 +783,7 @@ impl World {
                     .copied()
                     .unwrap_or(0);
                 inventory_value =
-                    inventory_value.saturating_add(quantity.saturating_mul(price));
+                    inventory_value.saturating_add(quantity.saturating_mul(price as u128));
             }
             wealth.push(WealthEntry {
                 agent: agent.clone(),
@@ -869,5 +905,16 @@ mod tests {
         assert_eq!(season_for_tick(449), Season::Spring);
         assert_eq!(weather_for(&Season::Spring, 1), "Mild, 12°C, sunny");
         assert_eq!(weather_for(&Season::Winter, 6), "Blizzard, -8°C");
+    }
+
+    #[test]
+    fn opening_hours_match_origin_table() {
+        assert_eq!(opening_hours("Bakery"), Some((0, 8)));
+        assert_eq!(opening_hours("Tavern"), Some((4, 15)));
+        assert_eq!(opening_hours("Mill"), Some((1, 10)));
+        assert_eq!(opening_hours("Carpenter Shop"), Some((1, 10)));
+        assert_eq!(opening_hours("Healer's Hut"), Some((1, 11)));
+        assert_eq!(opening_hours("Village Square"), None);
+        assert_eq!(opening_hours("Cottage 1"), None);
     }
 }
