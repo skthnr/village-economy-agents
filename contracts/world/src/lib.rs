@@ -12,6 +12,7 @@ use near_sdk::{
     store::{IterableMap, LookupMap},
     AccountId,
     BorshStorageKey,
+    PanicOnDefault,
 };
 
 use crate::{
@@ -41,6 +42,7 @@ enum StorageKey {
     PendingActions,
 }
 
+#[derive(PanicOnDefault)]
 #[near(contract_state)]
 pub struct World {
     owner: AccountId,

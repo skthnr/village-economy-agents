@@ -240,6 +240,10 @@ export function agentIndex(agent: string): number {
   return hash % AGENT_ORDER.length;
 }
 
+export function policyPhase(agent: string, tick: number): number {
+  return (tick + agentIndex(agent)) % POLICY_PHASE_COUNT;
+}
+
 export function decideActions(agent: string, perception: Perception): Action[] {
   const hour = hourOfDay(perception.tick);
 
