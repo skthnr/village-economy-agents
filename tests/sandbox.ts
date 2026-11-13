@@ -319,9 +319,17 @@ export async function deployEconomy(
     ),
   ]);
 
+  // Test-harness funding only; no contract logic changes here. The world
+  // factory `create_agent_with_keys` creates one sub-account per seed agent and
+  // transfers ~20.0025 NEAR out of the world balance for each (10 N
+  // AGENT_CREATION_TRANSFER + 10 N AGENT_ITEMS_DEPOSIT + 0.0025 N coin storage).
+  // 19 agents therefore need ~380 N, but `createDeployer` starts the world with
+  // only 21 N; without this top-up the second agent creation fails with
+  // "Exceeded the account balance". Fund the world for all 19 agents plus
+  // register_world storage and gas, with headroom.
   await harness.master.signAndSendTransaction({
     receiverId: ids.world,
-    actions: [nearActions.transfer(10n * ONE_NEAR)],
+    actions: [nearActions.transfer(400n * ONE_NEAR)],
     waitUntil: "FINAL",
   });
 

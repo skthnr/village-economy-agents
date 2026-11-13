@@ -52,11 +52,10 @@ interface RelayContext {
 class BodyTooLargeError extends Error {}
 
 /**
- * In-memory promise queue that serializes tasks per key.
- *
- * The relayer uses the delegate sender account as the key: two delegates from
- * the same access key must never be submitted concurrently, otherwise their
- * nonces can race. A rejected task never poisons the queue for later tasks.
+ * In-memory promise queue that serializes tasks per key. The key is the
+ * delegate sender account. Two delegates from one access key never run
+ * concurrently; otherwise their nonces can race. A rejected task never
+ * poisons the queue for later tasks.
  */
 export class SerialQueue {
   private readonly tails = new Map<string, Promise<void>>();
@@ -79,9 +78,9 @@ export class SerialQueue {
 }
 
 /**
- * Parses the HTTP payload and proves it contains one canonical Borsh
- * `SignedDelegate`. Base64 is checked strictly; the delegate is decoded here so
- * malformed bytes are rejected before the gate runs.
+ * Parses the HTTP payload and proves it holds one canonical Borsh
+ * `SignedDelegate`. Base64 is checked strictly. The delegate is decoded here,
+ * so malformed bytes are rejected before the gate runs.
  */
 function parseRelayBody(body: unknown): {
   signedDelegateBase64: string;
@@ -213,10 +212,8 @@ export function validateDelegate(
 }
 
 /**
- * Creates the relayer HTTP server without listening.
- *
- * The caller must invoke `listen` explicitly (or use `startRelayer`). No NEAR
- * RPC call happens during construction.
+ * Creates the relayer HTTP server without listening. The caller must call
+ * `listen` (or use `startRelayer`). Construction makes no NEAR RPC call.
  */
 export function createRelayServer(config: RelayerConfig): Server {
   assertConfig(config);
@@ -240,7 +237,7 @@ export function createRelayServer(config: RelayerConfig): Server {
 
 /**
  * Starts the relayer on `RELAYER_HOST:RELAYER_PORT` (default
- * `127.0.0.1:8787`). When `config` is omitted it is read from the environment:
+ * `127.0.0.1:8787`). Without `config`, it reads the environment:
  * `WORLD_ACCOUNT`, `ITEMS_ACCOUNT`, `COIN_ACCOUNT`, `NEAR_RPC_URL`,
  * `RELAYER_ACCOUNT`, and `RELAYER_PRIVATE_KEYS`.
  */
