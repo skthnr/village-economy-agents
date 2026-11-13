@@ -118,15 +118,20 @@ const DAY_NAMES = [
 ] as const;
 
 const SEASONS: readonly Season[] = ["spring", "summer", "autumn", "winter"];
-const ACTION_TYPES: readonly ActionType[] = [
-  "move_to",
-  "speak",
-  "produce",
-  "eat",
-  "post_order",
-  "buy_item",
-  "cancel_order",
-];
+function isActionType(value: string): value is ActionType {
+  switch (value) {
+    case "move_to":
+    case "speak":
+    case "produce":
+    case "eat":
+    case "post_order":
+    case "buy_item":
+    case "cancel_order":
+      return true;
+    default:
+      return false;
+  }
+}
 
 export function sleepRoll(tick: number, agentIndex: number): number {
   return ((Math.floor(tick / TICKS_PER_DAY) * 19 + agentIndex) % 100 + 100) % 100;
@@ -294,7 +299,7 @@ export function parseActions(value: unknown): Action[] {
     const path = `actions[${index}]`;
     const record = asRecord(entry, path);
     const rawType = field(record, "action_type", path);
-    if (typeof rawType !== "string" || !ACTION_TYPES.includes(rawType as ActionType)) {
+    if (typeof rawType !== "string" || !isActionType(rawType)) {
       throw new TypeError(`${path}.action_type is not a supported action`);
     }
 

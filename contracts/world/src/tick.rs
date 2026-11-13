@@ -11,7 +11,7 @@ use crate::{
     events::Event,
     market::trade_volume_slot,
     recipes::{
-        apply_multipliers, recipe_for, season_multiplier_bps, valid_production_location, ALL_ITEMS,
+        production_quantity, recipe_for, season_multiplier_bps, valid_production_location, ALL_ITEMS,
     },
     state::{Action, ActionType, EconomySnapshot, OrderSide, Season, WealthEntry},
     World,
@@ -716,7 +716,7 @@ impl World {
             ));
         }
 
-        let quantity = apply_multipliers(recipe.base_qty, season_bps);
+        let quantity = production_quantity(item, &self.season).unwrap_or(0);
         if quantity == 0 {
             for (input, input_quantity) in recipe.inputs {
                 self.agent_mint_item(agent, input, *input_quantity);

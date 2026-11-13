@@ -229,9 +229,11 @@ export function resolvePolicyMode(
   return hasApiKey ? "llm" : "policy";
 }
 
+const AGENT_INDEX = new Map(AGENT_ORDER.map((name, index) => [name, index]));
+
 export function agentIndex(agent: string): number {
-  const direct = AGENT_ORDER.indexOf(agent);
-  if (direct >= 0) return direct;
+  const direct = AGENT_INDEX.get(agent);
+  if (direct !== undefined) return direct;
   let hash = 0;
   for (const character of agent) {
     hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
