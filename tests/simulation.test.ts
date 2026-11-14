@@ -15,19 +15,21 @@ import {
   buyOrder,
   cancelOrder,
   deployEconomy,
+  executeMarketAction,
+  executeTick,
   findOrder,
-  marketCall,
   ftBalanceOf,
   getEconomySnapshot,
   getOrderBook,
   getPerception,
+  isMarketAction,
+  marketCall,
   mtBalanceOf,
   mtSupply,
   mtTransfer,
   postBuyOrder,
   postSellOrder,
   requireAgent,
-  executeTick,
   startHarness,
   stopHarness,
   submitCoreActions,
@@ -37,7 +39,6 @@ import {
   type Harness,
 } from "./sandbox.js";
 
-const TICKS = Number(process.env.EIDOLON_TICKS ?? 112);
 const MILLER_STOP_TICK = 48;
 const SCENARIO_TICKS = Number(process.env.EIDOLON_TICKS ?? 49);
 const DET_TICKS = Number(process.env.EIDOLON_DET_TICKS ?? 112);
@@ -57,60 +58,10 @@ interface TickDecision {
   actions: Action[];
 }
 
-function isMarketAction(action: Action): boolean {
-  return (
-    action.action_type === "post_order" ||
-    action.action_type === "buy_item" ||
-    action.action_type === "cancel_order"
-  );
-}
-
-function required<T>(value: T | undefined, label: string): T {
-  if (value === undefined) throw new Error(`missing ${label}`);
-  return value;
-}
-
-async function executeMarketAction(
-  economy: Economy,
-  agent: AgentHandle,
-  action: Action,
-): Promise<void> {
-  if (action.action_type === "post_order") {
-    const item = required(action.item, "post_order item");
-    const quantity = BigInt(required(action.quantity, "post_order quantity"));
-    const price = BigInt(required(action.price, "post_order price"));
-    if (action.side === "sell") {
-      await postSellOrder(economy, agent, item, quantity, price);
-      return;
-    }
-    if (action.side === "buy") {
-      await postBuyOrder(economy, agent, item, quantity, price);
-      return;
-    }
-    throw new Error(`post_order needs a side, got ${String(action.side)}`);
-  }
-
-  if (action.action_type === "buy_item") {
-    const orderId = required(action.order_id, "buy_item order_id");
-    const maxPrice = BigInt(required(action.max_price, "buy_item max_price"));
-    const quantity = BigInt(required(action.quantity, "buy_item quantity"));
-    await buyOrder(economy, agent, orderId, maxPrice, quantity);
-    return;
-  }
-
-  if (action.action_type === "cancel_order") {
-    await cancelOrder(economy, agent, required(action.order_id, "cancel order_id"));
-    return;
-  }
-
-  throw new Error(`not a market action: ${action.action_type}`);
-}
-
-
 async function simulate(
   economy: Economy,
   withActions = true,
-  ticks = TICKS,
+  ticks = DET_TICKS,
 ): Promise<SimulationTrace> {
   const trace: SimulationTrace = {
     snapshot: "",
@@ -211,7 +162,7 @@ async function simulate(
 function assertDeterminism(
   first: SimulationTrace,
   second: SimulationTrace,
-  ticks = TICKS,
+  ticks = DET_TICKS,
 ): void {
   assert.equal(
     first.snapshot,
@@ -290,7 +241,7 @@ async function assertMirror(economy: Economy, name: string): Promise<void> {
   );
 }
 
-async function scenarioActionsBeforeTick(
+async function scenarioActions(
   economy: Economy,
   tick: number,
 ): Promise<void> {
@@ -545,7 +496,7 @@ async function scenarioActionsBeforeTick(
   }
 }
 
-async function assertScenarioTick(
+async function assertScenario(
   economy: Economy,
   tick: number,
   bread: bigint,
@@ -659,7 +610,7 @@ async function assertScenarioTick(
 async function runScenario(economy: Economy): Promise<void> {
   // Scenario (a)-(f): scripted edge cases the policy cannot force on its own.
   for (let tick = 1; tick <= SCENARIO_TICKS; tick += 1) {
-    await scenarioActionsBeforeTick(economy, tick);
+    await scenarioActions(economy, tick);
     if (tick % 10 === 0) {
       console.log(`${economy.tag}: scenario tick ${tick}/${SCENARIO_TICKS}`);
     }
@@ -671,7 +622,7 @@ async function runScenario(economy: Economy): Promise<void> {
       mtBalanceOf(economy, requireAgent(economy, "gerda").accountId, "flour"),
       mtBalanceOf(economy, requireAgent(economy, "anselm").accountId, "flour"),
     ]);
-    await assertScenarioTick(
+    await assertScenario(
       economy,
       tick,
       bread,

@@ -8,7 +8,7 @@ import {
 import { CORE_ACTION_TYPES, NO_DEPOSIT, WORLD_CALL_GAS } from "./constants.js";
 import type { Action } from "./perception.js";
 
-const DELEGATE_BLOCK_HEIGHT_TTL = 120;
+const DELEGATE_TTL_BLOCKS = 120;
 const RESPONSE_TEXT_LIMIT = 300;
 
 
@@ -27,7 +27,7 @@ export async function postSignedDelegate(
   url: string,
   signedDelegate: SignedDelegate,
 ): Promise<void> {
-  const encoded = Buffer.from(encodeSignedDelegate(signedDelegate)).toString("base64");
+  const encoded = encodeSignedDelegate(signedDelegate).toBase64();
   const response = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -47,7 +47,7 @@ export async function postSignedDelegate(
  * Signs a `submit_actions` delegate with the agent's FCK key and relays it.
  * Returns the number of core actions submitted, or 0 when there are none.
  */
-export async function submitCoreActionsViaRelayer(
+export async function relayCoreActions(
   account: Account,
   worldAccount: string,
   url: string,
@@ -68,7 +68,7 @@ export async function submitCoreActionsViaRelayer(
         NO_DEPOSIT,
       ),
     ],
-    blockHeightTtl: DELEGATE_BLOCK_HEIGHT_TTL,
+    blockHeightTtl: DELEGATE_TTL_BLOCKS,
   });
 
   await postSignedDelegate(url, signedDelegate);

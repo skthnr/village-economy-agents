@@ -59,7 +59,7 @@ async function makeSignedDelegate(
 }
 
 function encodeSigned(signedDelegate: SignedDelegate): string {
-  return Buffer.from(encodeSignedDelegate(signedDelegate)).toString("base64");
+  return encodeSignedDelegate(signedDelegate).toBase64();
 }
 
 function functionCallAction(methodName: string): unknown {

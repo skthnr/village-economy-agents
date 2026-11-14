@@ -4,7 +4,6 @@ import test from "node:test";
 
 import {
   dayOfSeason,
-  DAYS_PER_SEASON,
   hourOfDay,
   seasonForTick,
   sleepQuality,

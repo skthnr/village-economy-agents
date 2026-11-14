@@ -1,54 +1,13 @@
 import { parsePerception } from "../orchestrator/src/perception.ts";
 import { AGENT_ORDER, decideActions } from "../orchestrator/src/policy-agents.ts";
 import {
-  buyOrder,
-  cancelOrder,
+  executeMarketAction,
   executeTick,
   getPerception,
-  postBuyOrder,
-  postSellOrder,
+  isMarketAction,
   requireAgent,
   submitCoreActions,
 } from "./sandbox.ts";
-
-function isMarketAction(action) {
-  return (
-    action.action_type === "post_order" ||
-    action.action_type === "buy_item" ||
-    action.action_type === "cancel_order"
-  );
-}
-
-async function executeMarketAction(economy, agent, action) {
-  if (action.action_type === "post_order") {
-    const quantity = BigInt(action.quantity);
-    const price = BigInt(action.price);
-    if (action.side === "sell") {
-      await postSellOrder(economy, agent, action.item, quantity, price);
-      return;
-    }
-    if (action.side === "buy") {
-      await postBuyOrder(economy, agent, action.item, quantity, price);
-      return;
-    }
-    throw new Error(`post_order needs a side, got ${String(action.side)}`);
-  }
-  if (action.action_type === "buy_item") {
-    await buyOrder(
-      economy,
-      agent,
-      action.order_id,
-      BigInt(action.max_price),
-      BigInt(action.quantity),
-    );
-    return;
-  }
-  if (action.action_type === "cancel_order") {
-    await cancelOrder(economy, agent, action.order_id);
-    return;
-  }
-  throw new Error(`not a market action: ${action.action_type}`);
-}
 
 /**
  * Scripted-agent loop shared by the demo and the measurement.

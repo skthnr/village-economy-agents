@@ -8,7 +8,7 @@
     "relayer"
   ],
   "scripts": {
-    "test": "node --import=tsx --test tests/*.test.ts",
+    "test": "node --import=tsx --test tests/unit.test.ts tests/simulation.test.ts",
     "test:relayer": "node --import=tsx --test tests/relayer.test.ts",
     "test:simulation": "node --import=tsx --test tests/simulation.test.ts",
     "demo": "node --import=tsx demo.mjs",

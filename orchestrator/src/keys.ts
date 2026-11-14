@@ -28,11 +28,9 @@ function keyFile(name: string): string {
 
 export async function ensureAgentKeys(names: readonly string[]): Promise<Map<string, AgentKeys>> {
   await mkdir(keystoreDirectory(), { recursive: true, mode: 0o700 });
-  const keys = new Map<string, AgentKeys>();
-  for (const name of names) {
-    keys.set(name, await loadOrCreate(name));
-  }
-  return keys;
+  return new Map(
+    await Promise.all(names.map(async (name) => [name, await loadOrCreate(name)] as const)),
+  );
 }
 
 

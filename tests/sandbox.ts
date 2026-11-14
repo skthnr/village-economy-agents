@@ -118,7 +118,10 @@ export interface WorldView {
 
 function wasmCandidatePaths(name: ContractName): string[] {
   const file = WASM_FILES[name];
+  const crate = `eidolon_${name}`;
   return [
+    resolve(REPO_ROOT, "target/near", crate, file),
+    resolve(REPO_ROOT, "contracts", name, "target/near", crate, file),
     resolve(REPO_ROOT, "target/near", file),
     resolve(REPO_ROOT, "contracts", name, "target/near", file),
     resolve(REPO_ROOT, "contracts", name, "target/wasm32-unknown-unknown/release", file),
@@ -643,6 +646,49 @@ export async function executeTick(economy: Economy) {
     deposit: 0n,
     waitUntil: "FINAL",
   });
+}
+
+export function isMarketAction(action: Action): boolean {
+  return (
+    action.action_type === "post_order" ||
+    action.action_type === "buy_item" ||
+    action.action_type === "cancel_order"
+  );
+}
+
+export async function executeMarketAction(
+  economy: Economy,
+  agent: AgentHandle,
+  action: Action,
+): Promise<void> {
+  if (action.action_type === "post_order") {
+    const quantity = BigInt(action.quantity);
+    const price = BigInt(action.price);
+    if (action.side === "sell") {
+      await postSellOrder(economy, agent, action.item, quantity, price);
+      return;
+    }
+    if (action.side === "buy") {
+      await postBuyOrder(economy, agent, action.item, quantity, price);
+      return;
+    }
+    throw new Error(`post_order needs a side, got ${String(action.side)}`);
+  }
+  if (action.action_type === "buy_item") {
+    await buyOrder(
+      economy,
+      agent,
+      action.order_id,
+      BigInt(action.max_price),
+      BigInt(action.quantity),
+    );
+    return;
+  }
+  if (action.action_type === "cancel_order") {
+    await cancelOrder(economy, agent, action.order_id);
+    return;
+  }
+  throw new Error(`not a market action: ${action.action_type}`);
 }
 
 export function findOrder(

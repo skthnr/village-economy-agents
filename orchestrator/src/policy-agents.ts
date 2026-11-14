@@ -253,7 +253,7 @@ export function decideActions(agent: string, perception: Perception): Action[] {
     if (food !== undefined) {
       return [{ action_type: "eat", item: food, quantity: "1" }];
     }
-    const purchase = cheapestEdiblePurchase(agent, perception);
+    const purchase = buyCheapestEdible(agent, perception);
     if (purchase !== undefined) {
       return [purchase];
     }
@@ -285,7 +285,7 @@ export function decideActions(agent: string, perception: Perception): Action[] {
       actions.push(sale);
     }
   } else if (phase === POLICY_PHASE_BUY && actions.length === 0) {
-    const purchase = cheapestEdiblePurchase(agent, perception);
+    const purchase = buyCheapestEdible(agent, perception);
     if (purchase !== undefined) {
       actions.push(purchase);
     }
@@ -315,11 +315,11 @@ function hasInputs(perception: Perception, recipe: Recipe): boolean {
 function cheapestOwnedEdible(perception: Perception): string | undefined {
   const edibles = perception.mirrors.inventory
     .filter((line) => (SATIATION[line.item] ?? 0) > 0 && BigInt(line.quantity) > 0n)
-    .sort(compareByPriceThenRank(perception));
+    .sort(byPriceThenRank(perception));
   return edibles[0]?.item;
 }
 
-function cheapestEdiblePurchase(agent: string, perception: Perception): Action | undefined {
+function buyCheapestEdible(agent: string, perception: Perception): Action | undefined {
   const wallet = BigInt(perception.mirrors.wallet);
   const candidates = perception.order_book
     .filter(
@@ -329,7 +329,7 @@ function cheapestEdiblePurchase(agent: string, perception: Perception): Action |
         BigInt(order.quantity) > 0n &&
         !isOwnAgent(agent, order.agent_id),
     )
-    .sort(compareByPriceThenRank(perception));
+    .sort(byPriceThenRank(perception));
 
   for (const order of candidates) {
     const price = BigInt(order.price);
@@ -383,7 +383,7 @@ function priceOf(perception: Perception, item: string): bigint {
   return line === undefined ? DEFAULT_PRICE : BigInt(line.price);
 }
 
-function compareByPriceThenRank(
+function byPriceThenRank(
   perception: Perception,
 ): (left: InventoryLine | { item: string; price: string }, right: InventoryLine | { item: string; price: string }) => number {
   return (left, right) => {

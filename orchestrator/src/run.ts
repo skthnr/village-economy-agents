@@ -18,14 +18,14 @@ import {
 } from "./constants.js";
 import { ensureAgentKeys } from "./keys.js";
 import { ACTION_TOOLS, decideWithLlm } from "./llm.js";
-import { parsePerception, renderPerception, type Action, type Perception } from "./perception.js";
+import { parsePerception, renderPerception, type Action } from "./perception.js";
 import {
   AGENT_ORDER,
   decideActions,
   resolvePolicyMode,
   type PolicyMode,
 } from "./policy-agents.js";
-import { selectCoreActions, submitCoreActionsViaRelayer } from "./relayer.js";
+import { relayCoreActions, selectCoreActions } from "./relayer.js";
 
 const DEFAULT_TICKS = 112;
 
@@ -65,40 +65,43 @@ async function main(): Promise<void> {
 
   let processed = 0;
   while (processed < config.ticks) {
-    const view = await callView<{ tick: number }>(
-      provider,
-      config.worldAccount,
-      "get_world_view",
-      {},
-    );
     let submitted = 0;
 
-    for (const name of AGENT_ORDER) {
-      const agentId = npcAccountId(name, config.worldAccount);
-      const perceptionJson = await callView<string>(
-        provider,
-        config.worldAccount,
-        "get_perception",
-        { agent_id: agentId },
-      );
-      const perception: Perception = parsePerception(perceptionJson);
-      const rendered = renderPerception(perception);
-      const mode = resolvePolicyMode(config.policy, config.hasAiKey);
+    const mode = resolvePolicyMode(config.policy, config.hasAiKey);
+    const perceptions = await Promise.all(
+      AGENT_ORDER.map(async (name) => {
+        const agentId = npcAccountId(name, config.worldAccount);
+        const perception = parsePerception(
+          await callView<string>(provider, config.worldAccount, "get_perception", {
+            agent_id: agentId,
+          }),
+        );
+        return { name, perception };
+      }),
+    );
+
+    const decided: { name: string; fckAccount: Account; marketAccount: Account; actions: Action[] }[] = [];
+    for (const { name, perception } of perceptions) {
       const actions =
         mode === "llm"
-          ? await decideWithLlm(rendered, ACTION_TOOLS)
+          ? await decideWithLlm(renderPerception(perception), ACTION_TOOLS)
           : decideActions(name, perception);
-
       const fckAccount = fckAccounts.get(name);
       const marketAccount = marketAccounts.get(name);
       if (fckAccount === undefined || marketAccount === undefined) {
         throw new Error(`missing signer account for ${name}`);
       }
-
-      submitted += await submitActions(fckAccount, config, actions);
-      submitted += await executeOrderActions(marketAccount, config, actions);
+      decided.push({ name, fckAccount, marketAccount, actions });
     }
 
+    for (const entry of decided) {
+      submitted += await executeOrderActions(entry.marketAccount, config, entry.actions);
+    }
+
+    const coreCounts = await Promise.all(
+      decided.map((entry) => submitActions(entry.fckAccount, config, entry.actions)),
+    );
+    for (const count of coreCounts) submitted += count;
     await owner.callFunction({
       contractId: config.worldAccount,
       methodName: "run_tick",
@@ -108,7 +111,8 @@ async function main(): Promise<void> {
     });
 
     processed += 1;
-    console.log(`tick ${view.tick}: submitted ${submitted} actions`);
+    const tick = perceptions[0]?.perception.tick ?? processed;
+    console.log(`tick ${tick}: submitted ${submitted} actions`);
   }
 
   const snapshot = await callView<Record<string, unknown>>(
@@ -207,7 +211,7 @@ async function submitActions(
   actions: readonly Action[],
 ): Promise<number> {
   if (config.relayerUrl !== undefined) {
-    return submitCoreActionsViaRelayer(account, config.worldAccount, config.relayerUrl, actions);
+    return relayCoreActions(account, config.worldAccount, config.relayerUrl, actions);
   }
 
   const core = selectCoreActions(actions);
