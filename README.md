@@ -69,7 +69,7 @@ sequenceDiagram
 |---|---|---|
 | Quickstart: `npm install` · `npm run demo` | build/deploy sequence in the bash block; needs Rust, `cargo-near`, `near-cli-rs` | fresh clone builds from source |
 | Smoke/measure: `EIDOLON_TICKS=112` | 27.98 Tgas/tick on a single-vCPU review host | reproducible, zero-funds economy |
-| Tests: `npm test` · `EIDOLON_DET_TICKS=112 npm test` | 26 tests; determinism digest in `SUBMISSION-PREP.md` | suites pass |
+| Tests: `npm test` · `EIDOLON_DET_TICKS=112 npm test` | 26 tests; 112-tick digest `30271fa8011c33c045f3577ada4bd9a9b722fd0a82bbd435f72c55222ef9b46f` | suites pass |
 | Unit: `node --import=tsx --test tests/unit.test.ts` | 24 unit tests pass | unit vectors pass |
 | `node demo.mjs` | tick output with production/tax/market settlement | deterministic economy loop |
 | `cargo test --workspace` | contract and economy vectors pass | rules are tested |
