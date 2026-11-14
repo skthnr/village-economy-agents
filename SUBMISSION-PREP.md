@@ -1,6 +1,6 @@
 # SUBMISSION-PREP — eidolon (LOCAL DRAFT, NOT SUBMITTED)
 
-Track: `games` (spec `p0-games.md`). Deadline 2026-11-14T23:59:00Z.
+Tracks: `games`, `agents` (specs `p0-games.md`, `p0-agents.md`). Deadline 2026-11-14T23:59:00Z.
 No push, no remote, no tags, no X post, no submit. Local commit only.
 
 ## Judge quickstart (do X -> see Y), MEASURED on Celesto Box A
@@ -36,7 +36,7 @@ Q-012 video required when judges cannot open the demo. Tags @NEARProtocol, #NEAR
 | leadName | 2-80 chars | EMPTY |
 | email | valid, <=160, max 2 submissions per address (Q-015) | EMPTY |
 | size | `1` / `2 - 4` / `4 - 6` / `6 - 8` / `8+` | EMPTY |
-| tracks | >=1 track id, each once, `games` fits | EMPTY |
+| tracks | >=1 track id, each once, `games` and `agents` fit | EMPTY |
 | nearAddress | 2-64 lowercase mainnet account the team creates | EMPTY |
 | projectUrl | http(s), <=300, public repo, unique | EMPTY |
 | demoUrl | http(s), <=300, published X post | EMPTY |
