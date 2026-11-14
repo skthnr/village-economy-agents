@@ -7,12 +7,18 @@ sequenceDiagram
     accTitle: eidolon runtime flow
     accDescr: Orchestrator deploys both contracts, creates agent accounts, then perceives, decides, submits actions, settles the market, and rolls ticks.
     autonumber
+    box rgba(243,232,255,0.12) Contracts
     participant W as world
     participant I as items
     participant K as coin
+    end
+    box rgba(230,247,235,0.12) Off-chain agents
     participant O as orchestrator
     participant R as relayer
+    end
+    box rgba(255,244,214,0.12) Local chain
     participant S as sandbox
+    end
     rect rgba(226,238,255,0.20)
     Note over O,S: PHASE 1 — Deploy and init contracts
     O->>S: near-sandbox start
@@ -22,22 +28,24 @@ sequenceDiagram
     end
     rect rgba(230,247,235,0.20)
     Note over O,W: PHASE 2 — Create agent accounts
-    O->>W: create_agent_with_keys(name, fck_key, market_key)
-    W-->>O: sub-account created
+    O->>+W: create_agent_with_keys(name, fck_key, market_key)
+    W-->>-O: sub-account created
     end
     rect rgba(255,244,214,0.20)
     Note over O,W: PHASE 3 — Perceive each agent
     loop each tick until horizon
     par one view per agent
-    O->>W: get_perception(agent_id)
-    W-->>O: perception prompt
+    O->>+W: get_perception(agent_id)
+    W-->>-O: perception prompt
     end
     O->>O: parsePerception
     end
     end
     rect rgba(243,232,255,0.20)
     Note over O: PHASE 4 — Decide via resolvePolicyMode
+    activate O
     O->>O: decideActions or decideWithLlm
+    deactivate O
     end
     rect rgba(255,232,232,0.20)
     Note over O,R: PHASE 5 — Act and submit
@@ -58,18 +66,20 @@ sequenceDiagram
     I->>W: mt_on_transfer
     else buy side
     O->>K: ft_transfer_call(buy order id)
-    K->>W: ft_on_transfer
+    K->>+W: ft_on_transfer
     W->>I: mt_transfer(buyer, item)
     W->>W: on_buy_fill
-    W-->>K: unused amount
+    W-->>-K: unused amount
     end
     end
     rect rgba(255,248,225,0.20)
     Note over O,W: PHASE 7 — Roll tick and season
     O->>W: run_tick()
+    activate W
     opt first tick of day
     W->>W: dawn_phase, season_for_tick, weather_for
     end
+    deactivate W
     end
 ```
 
