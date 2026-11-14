@@ -2,6 +2,11 @@
 
 19 agents run a village economy on NEAR. Each villager holds a wallet, an inventory, a body, a job, and a daily routine. One deterministic tick resolves actions, production, spoilage, tax, and market settlement. Items are NEP-245 tokens (`MultiToken` derive: NEP-245 core, metadata, NEP-145 storage). Token ids are the 18 village goods. Coin is a NEP-141 fungible token with fixed supply and `decimals: 0`. This repository is an executable specification of contracts, scripted agents, and tests. [ATTRIBUTION.md](ATTRIBUTION.md) gives the origin and the pinned upstream revision.
 
+**Problem.** NPC villages in agent simulations need real economic primitives: wallets, inventories, production, tax, and a clearing market — not mocked balances. eidolon implements a deterministic 19-agent village economy on NEAR with NEP-245 item tokens, a NEP-141 coin, and on-chain market settlement.
+
+**Tracks:** `games`, `agents`. **License:** MIT (`LICENSE`, `ATTRIBUTION.md`).
+**Baseline:** tag `pre-hackathon` (commit `788541d`, the imported brunnfeld-agentic-world tree). Diff: `git diff pre-hackathon..hackathon-submission` (see [Baseline, diff and dependencies](#baseline-diff-and-dependencies)).
+
 ```mermaid
 sequenceDiagram
     accTitle: eidolon runtime flow
@@ -108,7 +113,7 @@ npm install
 npm run demo
 ```
 
-The demo needs only Node.js. It starts a local `near-sandbox` chain and deploys release contracts. It runs 19 scripted agents for 49 ticks with zero real funds, no faucet, and no API keys. `npm run demo` prints one snapshot per simulated day. `npm run measure` runs the 49-tick workload and prints gas and wall time per tick. `npm test` runs the unit, vector, relayer, 49-tick simulation, and 112-tick determinism suites. Contract builds need Rust, `cargo-near`, and `near-cli-rs`:
+The demo needs only Node.js. It starts a local `near-sandbox` chain and deploys release contracts. It runs 19 scripted agents for 49 ticks with zero real funds, no faucet, and no API keys. `npm run demo` prints one snapshot per simulated day. `npm run measure` runs the 49-tick workload and prints gas and wall time per tick. `npm test` runs the unit, vector, relayer, 49-tick simulation, and 112-tick determinism suites; the simulation suites additionally need the contract WASM built. Contract builds need Rust, `cargo-near`, and `near-cli-rs` — build them once on Linux before running the demo or the simulation suites on a fresh clone:
 
 ```bash
 (cd contracts/items && cargo near build non-reproducible-wasm)
@@ -132,12 +137,14 @@ day 4: wealth=642 gini_bps=3848 gdp=0 scarce=meat,medicine
 demo complete: 4 dawn snapshots, 49 ticks
 ```
 
-`npm run measure` on a single-vCPU Ubuntu 24.04 host gives:
+Measured on the single-vCPU Ubuntu 24.04 review host (recorded in `SUBMISSION-PREP.md`):
 
 ```text
 49 ticks in 76.41s; 27.98 Tgas/tick
-storage: 629,209 B across world/items/coin
+storage: 629,209 bytes across world/items/coin
 ```
+
+The full suites (`npm test` → 26 tests, `EIDOLON_DET_TICKS=112 npm test` → 2 determinism tests with digest `30271fa8011c33c045f3577ada4bd9a9b722fd0a82bbd435f72c55222ef9b46f`) are recorded in `SUBMISSION-PREP.md`. Re-run during audit on Ubuntu 24.04 (WSL2), Node 26: `node --import=tsx --test tests/unit.test.ts` (the offline unit/vector suite) → `tests 24 / pass 24 / fail 0`.
 
 Gas sums `receipts_outcome[].outcome.gas_burnt` over 49 ticks. Storage sums `view_account.storage_usage` across world, items, and coin. `demo.mjs` and `scripts/measure.mjs` import `tests/demo-runner.mjs`, so both measure identical work.
 
