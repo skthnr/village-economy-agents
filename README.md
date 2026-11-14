@@ -2,7 +2,7 @@
 
 19 agents run a village economy on NEAR. Each villager holds a wallet, an inventory, a body, a job, and a daily routine. One deterministic tick resolves actions, production, spoilage, tax, and market settlement. Items are NEP-245 tokens (`MultiToken` derive: NEP-245 core, metadata, NEP-145 storage). Token ids are the 18 village goods. Coin is a NEP-141 fungible token with fixed supply and `decimals: 0`. This repository is an executable specification of contracts, scripted agents, and tests. [ATTRIBUTION.md](ATTRIBUTION.md) gives the origin and the pinned upstream revision.
 
-**Problem.** NPC villages in agent simulations need real economic primitives: wallets, inventories, production, tax, and a clearing market — not mocked balances. eidolon implements a deterministic 19-agent village economy on NEAR with NEP-245 item tokens, a NEP-141 coin, and on-chain market settlement.
+**Problem.** NPC villages in agent simulations need real economic primitives — wallets, inventories, production, tax, and a clearing market, not mocked balances. eidolon implements them deterministically on NEAR.
 
 **Tracks:** `games`, `agents`. **License:** MIT (`LICENSE`, `ATTRIBUTION.md`).
 **Baseline:** tag `pre-hackathon` (commit `788541d`, the imported brunnfeld-agentic-world tree). Diff: `git diff pre-hackathon..hackathon-submission` (see [Baseline, diff and dependencies](#baseline-diff-and-dependencies)).
@@ -12,31 +12,20 @@ sequenceDiagram
     accTitle: eidolon runtime flow
     accDescr: Orchestrator deploys both contracts, creates agent accounts, then perceives, decides, submits actions, settles the market, and rolls ticks.
     autonumber
-    box rgba(243,232,255,0.12) Contracts
     participant W as world
     participant I as items
     participant K as coin
-    end
-    box rgba(230,247,235,0.12) Off-chain agents
     participant O as orchestrator
     participant R as relayer
-    end
-    box rgba(255,244,214,0.12) Local chain
     participant S as sandbox
-    end
-    rect rgba(226,238,255,0.20)
     Note over O,S: PHASE 1 — Deploy and init contracts
     O->>S: near-sandbox start
     O->>I: new(owner_id)
     O->>K: new(owner_id, total_supply)
     O->>W: new(items_contract, coin_contract, seed_agents)
-    end
-    rect rgba(230,247,235,0.20)
     Note over O,W: PHASE 2 — Create agent accounts
     O->>+W: create_agent_with_keys(name, fck_key, market_key)
     W-->>-O: sub-account created
-    end
-    rect rgba(255,244,214,0.20)
     Note over O,W: PHASE 3 — Perceive each agent
     loop each tick until horizon
     par one view per agent
@@ -45,14 +34,10 @@ sequenceDiagram
     end
     O->>O: parsePerception
     end
-    end
-    rect rgba(243,232,255,0.20)
     Note over O: PHASE 4 — Decide via resolvePolicyMode
     activate O
     O->>O: decideActions or decideWithLlm
     deactivate O
-    end
-    rect rgba(255,232,232,0.20)
     Note over O,R: PHASE 5 — Act and submit
     par one submit per agent
     alt relayer configured
@@ -62,8 +47,6 @@ sequenceDiagram
     O->>W: submit_actions(actions)
     end
     end
-    end
-    rect rgba(224,247,250,0.20)
     Note over O,K: PHASE 6 — Clear the market
     O->>W: post_order(item, quantity, price)
     alt sell side
@@ -76,8 +59,6 @@ sequenceDiagram
     W->>W: on_buy_fill
     W-->>-K: unused amount
     end
-    end
-    rect rgba(255,248,225,0.20)
     Note over O,W: PHASE 7 — Roll tick and season
     O->>W: run_tick()
     activate W
@@ -85,7 +66,6 @@ sequenceDiagram
     W->>W: dawn_phase, season_for_tick, weather_for
     end
     deactivate W
-    end
 ```
 
 ## Architecture
@@ -97,14 +77,13 @@ sequenceDiagram
 | `contracts/coin` (`eidolon-coin`) | `coin.eidolon.testnet` | NEP-141 coin. Init mints a fixed supply to world. Transfers only |
 | `orchestrator/` | off-chain | Fetches perception, chooses scripted or LLM actions, submits them, calls `run_tick` |
 
-Views do not read token balances. `coin_balance_mirror` and `item_balance_mirror` record every balance change, and callbacks and cross-contract flows own all balance updates. Deployed WASM sizes are 176,164 B (items), 138,149 B (coin), and 282,138 B (world).
+Views do not read token balances: `coin_balance_mirror` and `item_balance_mirror` record every balance change, and callbacks own all balance updates. Deployed WASM: 176,164 B (items), 138,149 B (coin), 282,138 B (world).
 
 ## Simulation rules
 
-- 16 ticks per day, 7 days per season, 112 ticks per season. Tick 1 is `Monday, 06:00`, spring, day 1. One tick is one simulated hour. The engine uses no RNG and no wall clock, so identical inputs produce identical state.
+- 16 ticks per day, 7 per season, 112 per season; tick 1 is `Monday, 06:00`, spring, day 1; one tick is one simulated hour. No RNG, no wall clock: identical inputs produce identical state.
 - Recipes, season multipliers, satiation, spoilage, tool wear, hunger, tax, and initial prices match the origin tables.
-- Order ids use `(tick << 20) | seq`. Fill ids use `(tick << 20) | next_fill_seq`.
-- The sleep roll is `((tick / 16) * 19 + agent_index) % 100`.
+- Order ids are `(tick << 20) | seq`; fill ids use `next_fill_seq`. The sleep roll is `((tick / 16) * 19 + agent_index) % 100`.
 
 ## Quickstart
 
@@ -115,9 +94,9 @@ npm install
 npm run demo
 ```
 
-The demo needs only Node.js. It starts a local `near-sandbox` chain and deploys release contracts. It runs 19 scripted agents for 49 ticks with zero real funds, no faucet, and no API keys. Expected first line: `eidolon demo: 19 agents, 49 ticks, zero real funds, scripted policy`, and one `day N:` snapshot per simulated day. `npm run measure` runs the 49-tick workload and prints gas and wall time per tick. `npm test` runs the unit, vector, relayer, 49-tick simulation, and 112-tick determinism suites; the simulation suites additionally need the contract WASM built.
+Needs only Node.js: starts a local `near-sandbox` chain, deploys release contracts, and runs 19 scripted agents for 49 ticks with zero real funds, no faucet, no API keys. Expected first line: `eidolon demo: 19 agents, 49 ticks, zero real funds, scripted policy`, plus one `day N:` snapshot per simulated day. `npm run measure` prints gas and wall time per tick. `npm test` runs the unit, vector, relayer, and simulation suites; simulation suites need the contract WASM built.
 
-2. Optional, for a deployed sandbox/testnet instance: build and deploy the contracts. This needs Rust, `cargo-near`, and `near-cli-rs`:
+2. Optional, for a deployed sandbox/testnet instance (needs Rust, `cargo-near`, `near-cli-rs`):
 
 ```bash
 (cd contracts/items && cargo near build non-reproducible-wasm)
@@ -128,7 +107,7 @@ cp .env.example .env
 bash scripts/deploy.sh
 ```
 
-`scripts/deploy.sh` builds and deploys items, coin, and world in sequence, initializes each contract, and prints storage commands. Orchestrator targets are `get_perception`, `submit_actions`, and `run_tick`. The demo horizon defaults to 49 ticks (three simulated days); `EIDOLON_TICKS=112` runs a seven-day season.
+`scripts/deploy.sh` builds, deploys, and initializes items, coin, and world in sequence, and prints storage commands. Demo horizon defaults to 49 ticks (three simulated days); `EIDOLON_TICKS=112` runs a seven-day season.
 
 ## Dry-run demo
 
@@ -141,34 +120,34 @@ day 4: wealth=642 gini_bps=3848 gdp=0 scarce=meat,medicine
 demo complete: 4 dawn snapshots, 49 ticks
 ```
 
-Measured on the single-vCPU Ubuntu 24.04 review host (recorded in `SUBMISSION-PREP.md`):
+Measured on the single-vCPU Ubuntu 24.04 review host, recorded in `SUBMISSION-PREP.md`:
 
 ```text
 49 ticks in 76.41s; 27.98 Tgas/tick
 storage: 629,209 bytes across world/items/coin
 ```
 
-The full suites (`npm test` → 26 tests, `EIDOLON_DET_TICKS=112 npm test` → 2 determinism tests with digest `30271fa8011c33c045f3577ada4bd9a9b722fd0a82bbd435f72c55222ef9b46f`) are recorded in `SUBMISSION-PREP.md`. Re-run during audit on Ubuntu 24.04 (WSL2), Node 26: `node --import=tsx --test tests/unit.test.ts` (the offline unit/vector suite) → `tests 24 / pass 24 / fail 0`.
+Full suites recorded in `SUBMISSION-PREP.md`: `npm test` → 26 tests; `EIDOLON_DET_TICKS=112 npm test` → 2 determinism tests, digest `30271fa8011c33c045f3577ada4bd9a9b722fd0a82bbd435f72c55222ef9b46f`. Audit re-run on Ubuntu 24.04 (WSL2), Node 26: `node --import=tsx --test tests/unit.test.ts` → `tests 24 / pass 24 / fail 0`.
 
-Gas sums `receipts_outcome[].outcome.gas_burnt` over 49 ticks. Storage sums `view_account.storage_usage` across world, items, and coin. `demo.mjs` and `scripts/measure.mjs` import `tests/demo-runner.mjs`, so both measure identical work.
+Gas sums `receipts_outcome[].outcome.gas_burnt` over 49 ticks; storage sums `view_account.storage_usage` across the three contracts. `demo.mjs` and `scripts/measure.mjs` import `tests/demo-runner.mjs`, so both measure identical work.
 
 ## Environment variables
 
-`.env.example` lists every variable: `WORLD_ACCOUNT`, `ITEMS_ACCOUNT`, and `COIN_ACCOUNT` name the deployed contracts; `NEAR_NETWORK` is `testnet` or `mainnet`; `NEAR_RPC_URL` is the orchestrator JSON-RPC endpoint; `RELAYER_URL` is the NEP-366 relayer endpoint and `RELAYER_ACCOUNT` its account id; `NEAR_AI_BASE_URL` is the OpenAI-compatible gateway and `NEAR_AI_MODEL` the NPC decision model; `AGENT_KEYSTORE_DIR` holds generated NPC keys; `EIDOLON_TICKS` sets the demo/measure horizon (default 49). `RELAYER_PRIVATE_KEYS`, `NEAR_AI_API_KEY`, and `WORLD_OWNER_KEY` (calls `run_tick`) are secrets: `.env` and `.keys/` are gitignored, and no secret value belongs in a tracked file.
+`.env.example` lists every variable (`WORLD_ACCOUNT`, `ITEMS_ACCOUNT`, and `COIN_ACCOUNT` name the deployed contracts; `NEAR_NETWORK`, `NEAR_RPC_URL`, `RELAYER_URL`/`RELAYER_ACCOUNT`, `NEAR_AI_BASE_URL`/`NEAR_AI_MODEL`, `AGENT_KEYSTORE_DIR`, `EIDOLON_TICKS`). `RELAYER_PRIVATE_KEYS`, `NEAR_AI_API_KEY`, and `WORLD_OWNER_KEY` (calls `run_tick`) are secrets: `.env` and `.keys/` are gitignored, and no secret value belongs in a tracked file.
 
 ## Scope
 
-Supported surface: NEP-245 items with owner-gated mint, burn, and NEP-145 storage; a NEP-141 fixed-supply coin; world state, economy tables, deterministic time and body rules, events, genesis init, and views; a deterministic scripted NPC policy and an optional NEAR AI Cloud policy; direct action submission and owner-invoked tick execution. Not included: village meetings, proposals, votes, laws, god mode, the scenario harness, world generation, multi-village travel, player-controlled agents, loans, hired labor, wages, and barter scanning.
+Supported: NEP-245 items (owner-gated mint/burn, NEP-145 storage), fixed-supply NEP-141 coin, world state, economy tables, deterministic time and body rules, events, views, scripted and optional NEAR AI Cloud NPC policies, direct submission, owner-invoked ticks. Not included: village meetings, proposals, votes, laws, god mode, the scenario harness, world generation, multi-village travel, player-controlled agents, loans, hired labor, wages, and barter scanning.
 
 ## Platform limits
 
-NEAR sandbox binaries support Linux x86_64, Linux aarch64, and macOS arm64. Windows and Intel macOS throw `Unsupported platform`, so run tests and demos inside WSL2 or Linux CI. Contract builds need only Rust. Node 26 is the pinned LTS line.
+NEAR sandbox binaries support Linux x86_64, Linux aarch64, and macOS arm64; Windows and Intel macOS throw `Unsupported platform`, so run tests and demos inside WSL2 or Linux CI. Builds need only Rust. Node 26 is the pinned LTS line.
 
 ## Baseline, diff and dependencies
 
-Baseline: tag `pre-hackathon` marks the imported tree at `788541d`. The upstream project is brunnfeld-agentic-world.
-Submission: tag `hackathon-submission` marks the submitted state. `git rev-parse --short hackathon-submission` prints it.
-Diff: `git diff pre-hackathon..hackathon-submission`. After publishing, https://github.com/<owner>/<repo>/compare/pre-hackathon...hackathon-submission.
+Baseline: tag `pre-hackathon` marks the imported brunnfeld-agentic-world tree at `788541d`.
+Submission: tag `hackathon-submission` marks the submitted state (`git rev-parse --short hackathon-submission` prints it).
+Diff: `git diff pre-hackathon..hackathon-submission`; after publishing, https://github.com/<owner>/<repo>/compare/pre-hackathon...hackathon-submission.
 Libraries, templates and AI-generated code are listed in `ATTRIBUTION.md`.
 
 ## Attribution and license
