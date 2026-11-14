@@ -85,11 +85,10 @@ Views do not read token balances. `coin_balance_mirror` and `item_balance_mirror
 
 ## Simulation rules
 
-- 16 ticks per day, 7 days per season, 112 ticks per season. Tick 1 is `Monday, 06:00`, spring, day 1. One tick is one simulated hour.
+- 16 ticks per day, 7 days per season, 112 ticks per season. Tick 1 is `Monday, 06:00`, spring, day 1. One tick is one simulated hour. The engine uses no RNG and no wall clock, so identical inputs produce identical state.
 - Recipes, season multipliers, satiation, spoilage, tool wear, hunger, tax, and initial prices match the origin tables.
 - Order ids use `(tick << 20) | seq`. Fill ids use `(tick << 20) | next_fill_seq`.
 - The sleep roll is `((tick / 16) * 19 + agent_index) % 100`.
-- The engine uses no RNG and no wall clock, so identical inputs produce identical state.
 
 ## Quickstart
 
@@ -109,11 +108,9 @@ cp .env.example .env
 bash scripts/deploy.sh
 ```
 
-`scripts/deploy.sh` builds and deploys items, coin, and world in sequence. It initializes each contract and prints storage commands. Orchestrator targets are `get_perception`, `submit_actions`, and `run_tick`. The relayer path is a later wave.
+`scripts/deploy.sh` builds and deploys items, coin, and world in sequence, initializes each contract, and prints storage commands. Orchestrator targets are `get_perception`, `submit_actions`, and `run_tick`. The demo horizon defaults to 49 ticks (three simulated days); `EIDOLON_TICKS=112` runs a seven-day season.
 
 ## Dry-run demo
-
-The default horizon is 49 ticks (three simulated days). Set `EIDOLON_TICKS=112` for a seven-day season. Output from the W4 Ubuntu 24.04 single-vCPU run:
 
 ```text
 eidolon demo: 19 agents, 49 ticks, zero real funds, scripted policy
@@ -124,10 +121,10 @@ day 4: wealth=642 gini_bps=3848 gdp=0 scarce=meat,medicine
 demo complete: 4 dawn snapshots, 49 ticks
 ```
 
-`npm run measure` on the same host gives:
+`npm run measure` on a single-vCPU Ubuntu 24.04 host gives:
 
 ```text
-49 ticks in 76.41s; 27.98 Tgas/tick (Box A, 2026-11-14)
+49 ticks in 76.41s; 27.98 Tgas/tick
 storage: 629,209 B across world/items/coin
 ```
 
@@ -135,21 +132,11 @@ Gas sums `receipts_outcome[].outcome.gas_burnt` over 49 ticks. Storage sums `vie
 
 ## Environment variables
 
-| Variable | Meaning | Variable | Meaning |
-|---|---|---|---|
-| `WORLD_ACCOUNT` | World contract account id | `ITEMS_ACCOUNT` | Items contract account id |
-| `COIN_ACCOUNT` | Coin contract account id | `NEAR_NETWORK` | `testnet` or `mainnet` |
-| `NEAR_RPC_URL` | JSON-RPC endpoint used by the orchestrator | `RELAYER_URL` | NEP-366 relayer endpoint |
-| `RELAYER_ACCOUNT` | Relayer account id | `RELAYER_PRIVATE_KEYS` | Comma-separated relayer keys (secret, env only) |
-| `NEAR_AI_API_KEY` | NEAR AI Cloud API key (secret, env only) | `NEAR_AI_BASE_URL` | OpenAI-compatible gateway base URL |
-| `NEAR_AI_MODEL` | Model id for NPC decisions | `WORLD_OWNER_KEY` | World owner secret key used to call `run_tick` |
-| `AGENT_KEYSTORE_DIR` | Directory for generated NPC keys (gitignored) | `EIDOLON_TICKS` | Demo/measure horizon (default 49) |
-
-`.env` and `.keys/` are gitignored. No secret value belongs in a tracked file.
+`.env.example` lists every variable: `WORLD_ACCOUNT`, `ITEMS_ACCOUNT`, and `COIN_ACCOUNT` name the deployed contracts; `NEAR_NETWORK` is `testnet` or `mainnet`; `NEAR_RPC_URL` is the orchestrator JSON-RPC endpoint; `RELAYER_URL` is the NEP-366 relayer endpoint and `RELAYER_ACCOUNT` its account id; `NEAR_AI_BASE_URL` is the OpenAI-compatible gateway and `NEAR_AI_MODEL` the NPC decision model; `AGENT_KEYSTORE_DIR` holds generated NPC keys; `EIDOLON_TICKS` sets the demo/measure horizon (default 49). `RELAYER_PRIVATE_KEYS`, `NEAR_AI_API_KEY`, and `WORLD_OWNER_KEY` (calls `run_tick`) are secrets: `.env` and `.keys/` are gitignored, and no secret value belongs in a tracked file.
 
 ## Scope
 
-This build includes NEP-245 items with owner-gated mint, burn, and NEP-145 storage, and a NEP-141 fixed-supply coin. It includes world state, economy tables, deterministic time and body rules, events, genesis init, and views. It includes a deterministic scripted NPC policy and an optional NEAR AI Cloud policy. It includes direct action submission and owner-invoked tick execution. It defers village meetings, proposals, votes, and laws, plus god mode, the scenario harness, and world generation. It also defers multi-village travel, player-controlled agents, loans, hired labor, wages, and barter scanning.
+Supported surface: NEP-245 items with owner-gated mint, burn, and NEP-145 storage; a NEP-141 fixed-supply coin; world state, economy tables, deterministic time and body rules, events, genesis init, and views; a deterministic scripted NPC policy and an optional NEAR AI Cloud policy; direct action submission and owner-invoked tick execution. Not included: village meetings, proposals, votes, laws, god mode, the scenario harness, world generation, multi-village travel, player-controlled agents, loans, hired labor, wages, and barter scanning.
 
 ## Platform limits
 
@@ -157,4 +144,4 @@ NEAR sandbox binaries support Linux x86_64, Linux aarch64, and macOS arm64. Wind
 
 ## Attribution and license
 
-This port derives from an MIT-licensed origin project. See [ATTRIBUTION.md](ATTRIBUTION.md) for commit `e0656ca`, tree `801af5c`, and itemized reuse. The repository uses the MIT license in [LICENSE](LICENSE). Hackathon tracks: `games`, `agents`. Development ends 2026-11-14T23:59:00Z (UTC).
+This port derives from an MIT-licensed origin project. See [ATTRIBUTION.md](ATTRIBUTION.md) for commit `e0656ca`, tree `801af5c`, and itemized reuse. The repository uses the MIT license in [LICENSE](LICENSE). Hackathon tracks: `games`, `agents`.

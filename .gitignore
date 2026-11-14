@@ -1,11 +1,42 @@
-target/
-node_modules/
+# secrets and local credentials
 .env
 .keys/
-dist/
-coverage/
-*.log
 .near-credentials/
-.DS_Store
+
+# build output
+target/
+node_modules/
+dist/
+.next/
 sandbox/
 *.wasm
+*.tsbuildinfo
+.w5res/
+
+# test and runtime output
+coverage/
+.coverage
+.pytest_cache/
+htmlcov/
+*.log
+evidence/*.log
+bench.json
+*.out
+*.err
+
+# tool caches
+.cache/
+.turbo/
+.parcel-cache/
+__pycache__/
+.mypy_cache/
+.ruff_cache/
+
+# docs temporaries
+*.md.bak
+*.md.tmp
+*.md.orig
+.~*
+
+# OS noise
+.DS_Store
