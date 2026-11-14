@@ -2,10 +2,7 @@
 
 19 agents run a village economy on NEAR. Each villager holds a wallet, an inventory, a body, a job, and a daily routine. One deterministic tick resolves actions, production, spoilage, tax, and market settlement. Items are NEP-245 tokens (`MultiToken` derive: NEP-245 core, metadata, NEP-145 storage). Token ids are the 18 village goods. Coin is a NEP-141 fungible token with fixed supply and `decimals: 0`. This repository is an executable specification of contracts, scripted agents, and tests. [ATTRIBUTION.md](ATTRIBUTION.md) gives the origin and the pinned upstream revision.
 
-**Problem.** NPC villages in agent simulations need real economic primitives — wallets, inventories, production, tax, and a clearing market, not mocked balances. eidolon implements them deterministically on NEAR.
-
 **Tracks:** `games`, `agents`. **License:** MIT (`LICENSE`, `ATTRIBUTION.md`).
-**Baseline:** tag `pre-hackathon` (commit `788541d`, the imported brunnfeld-agentic-world tree). Diff: `git diff pre-hackathon..hackathon-submission` (see [Baseline, diff and dependencies](#baseline-diff-and-dependencies)).
 
 ```mermaid
 sequenceDiagram
@@ -82,7 +79,6 @@ Views do not read token balances: `coin_balance_mirror` and `item_balance_mirror
 ## Simulation rules
 
 - 16 ticks per day, 7 per season, 112 per season; tick 1 is `Monday, 06:00`, spring, day 1; one tick is one simulated hour. No RNG, no wall clock: identical inputs produce identical state.
-- Recipes, season multipliers, satiation, spoilage, tool wear, hunger, tax, and initial prices match the origin tables.
 - Order ids are `(tick << 20) | seq`; fill ids use `next_fill_seq`. The sleep roll is `((tick / 16) * 19 + agent_index) % 100`.
 
 ## Quickstart
@@ -93,8 +89,6 @@ Views do not read token balances: `coin_balance_mirror` and `item_balance_mirror
 npm install
 npm run demo
 ```
-
-Needs only Node.js: starts a local `near-sandbox` chain, deploys release contracts, and runs 19 scripted agents for 49 ticks with zero real funds, no faucet, no API keys. Expected first line: `eidolon demo: 19 agents, 49 ticks, zero real funds, scripted policy`, plus one `day N:` snapshot per simulated day. `npm run measure` prints gas and wall time per tick. `npm test` runs the unit, vector, relayer, and simulation suites; simulation suites need the contract WASM built.
 
 2. Optional, for a deployed sandbox/testnet instance (needs Rust, `cargo-near`, `near-cli-rs`):
 
@@ -120,20 +114,12 @@ day 4: wealth=642 gini_bps=3848 gdp=0 scarce=meat,medicine
 demo complete: 4 dawn snapshots, 49 ticks
 ```
 
-Measured on the single-vCPU Ubuntu 24.04 review host, recorded in `SUBMISSION-PREP.md`:
-
 ```text
 49 ticks in 76.41s; 27.98 Tgas/tick
 storage: 629,209 bytes across world/items/coin
 ```
 
 Full suites recorded in `SUBMISSION-PREP.md`: `npm test` → 26 tests; `EIDOLON_DET_TICKS=112 npm test` → 2 determinism tests, digest `30271fa8011c33c045f3577ada4bd9a9b722fd0a82bbd435f72c55222ef9b46f`. Audit re-run on Ubuntu 24.04 (WSL2), Node 26: `node --import=tsx --test tests/unit.test.ts` → `tests 24 / pass 24 / fail 0`.
-
-Gas sums `receipts_outcome[].outcome.gas_burnt` over 49 ticks; storage sums `view_account.storage_usage` across the three contracts. `demo.mjs` and `scripts/measure.mjs` import `tests/demo-runner.mjs`, so both measure identical work.
-
-## Environment variables
-
-`.env.example` lists every variable (`WORLD_ACCOUNT`, `ITEMS_ACCOUNT`, and `COIN_ACCOUNT` name the deployed contracts; `NEAR_NETWORK`, `NEAR_RPC_URL`, `RELAYER_URL`/`RELAYER_ACCOUNT`, `NEAR_AI_BASE_URL`/`NEAR_AI_MODEL`, `AGENT_KEYSTORE_DIR`, `EIDOLON_TICKS`). `RELAYER_PRIVATE_KEYS`, `NEAR_AI_API_KEY`, and `WORLD_OWNER_KEY` (calls `run_tick`) are secrets: `.env` and `.keys/` are gitignored, and no secret value belongs in a tracked file.
 
 ## Scope
 
