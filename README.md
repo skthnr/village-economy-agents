@@ -108,12 +108,16 @@ Views do not read token balances. `coin_balance_mirror` and `item_balance_mirror
 
 ## Quickstart
 
+1. Install and run the zero-funds demo → see the snapshot block under [Dry-run demo](#dry-run-demo):
+
 ```bash
 npm install
 npm run demo
 ```
 
-The demo needs only Node.js. It starts a local `near-sandbox` chain and deploys release contracts. It runs 19 scripted agents for 49 ticks with zero real funds, no faucet, and no API keys. `npm run demo` prints one snapshot per simulated day. `npm run measure` runs the 49-tick workload and prints gas and wall time per tick. `npm test` runs the unit, vector, relayer, 49-tick simulation, and 112-tick determinism suites; the simulation suites additionally need the contract WASM built. Contract builds need Rust, `cargo-near`, and `near-cli-rs` — build them once on Linux before running the demo or the simulation suites on a fresh clone:
+The demo needs only Node.js. It starts a local `near-sandbox` chain and deploys release contracts. It runs 19 scripted agents for 49 ticks with zero real funds, no faucet, and no API keys. Expected first line: `eidolon demo: 19 agents, 49 ticks, zero real funds, scripted policy`, and one `day N:` snapshot per simulated day. `npm run measure` runs the 49-tick workload and prints gas and wall time per tick. `npm test` runs the unit, vector, relayer, 49-tick simulation, and 112-tick determinism suites; the simulation suites additionally need the contract WASM built.
+
+2. Optional, for a deployed sandbox/testnet instance: build and deploy the contracts. This needs Rust, `cargo-near`, and `near-cli-rs`:
 
 ```bash
 (cd contracts/items && cargo near build non-reproducible-wasm)
