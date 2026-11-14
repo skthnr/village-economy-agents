@@ -9,14 +9,14 @@
 - Pinned tree: `801af5c`
 - Snapshot date: 2026-04-06 (`main`)
 
-`origin/` holds an unmodified upstream copy as an oracle. Files in `origin/` stay untouched and keep the MIT notice.
+This repository does not vendor the upstream tree: no `origin/` copy is present. Read the upstream sources at commit `e0656ca`, tree `801af5c`. Upstream files keep their MIT notice.
 
 ## What is reused
 
 - Simulation design: tick loop, body model, seasons, weather, tools, spoilage, tax, and scripted policy.
 - The 18-recipe supply-chain economy and its season multipliers.
 - The 19-agent village seed: names, skills, locations, schedules, wallets, and inventories.
-- The React viewer from `origin/viewer/`. A later fork replaces SSE with chain polling.
+- The React viewer from the upstream `viewer/`. A later fork replaces SSE with chain polling.
 
 ## What is new
 
