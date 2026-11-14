@@ -49,9 +49,9 @@ Never add `website`. Print full JSON, wait for explicit yes. 201 saved. On 400 f
 
 - Q-003: 8 pre-existing tags, none of the required pair, and no README diff link. Not satisfied. Local tags deliberately not created.
 - Q-012: video required when judges cannot open the demo.
-- Q-014: `LICENSE` present. Q-017: README "Quickstart" at line 86 and "Dry-run demo" at line 106.
+- Q-014: `LICENSE` present. Q-017: README "Quickstart" at line 88 and "Dry-run demo" at line 112.
 - Q-015: a second project on the same email must be named in README. Unresolved.
-- Q-002/Q-005 disclosure: README "Attribution and license" at line 150.
+- Q-002/Q-005 disclosure: README "Attribution and license" at line 153.
 - W8: dRPC N=2/3 returns 200. N=4 returns 400 code 31. Core `-32700` holds for that state only. No unbounded speedup claim.
 - HELD: single-suite consolidation prototyped then reverted (cold wall 572.3 vs 597.7 ms, no gain) per net-positive ROI.
 
