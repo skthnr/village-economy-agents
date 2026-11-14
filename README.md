@@ -83,25 +83,22 @@ Views do not read token balances: `coin_balance_mirror` and `item_balance_mirror
 
 ## Quickstart
 
-1. Install and run the zero-funds demo → see the snapshot block under [Dry-run demo](#dry-run-demo):
+1. Build the contract WASM once — no WASM is tracked in git, so a fresh clone needs Rust, `cargo-near`, and `near-cli-rs`:
+
+```bash
+(cd contracts/items && cargo near build non-reproducible-wasm)
+(cd contracts/coin && cargo near build non-reproducible-wasm)
+(cd contracts/world && cargo near build non-reproducible-wasm)
+```
+
+2. Run the zero-funds demo → see the snapshot block under [Dry-run demo](#dry-run-demo):
 
 ```bash
 npm install
 npm run demo
 ```
 
-2. Optional, for a deployed sandbox/testnet instance (needs Rust, `cargo-near`, `near-cli-rs`):
-
-```bash
-(cd contracts/items && cargo near build non-reproducible-wasm)
-(cd contracts/coin && cargo near build non-reproducible-wasm)
-(cd contracts/world && cargo near build non-reproducible-wasm)
-cp .env.example .env
-# edit .env, then
-bash scripts/deploy.sh
-```
-
-`scripts/deploy.sh` builds, deploys, and initializes items, coin, and world in sequence, and prints storage commands. Demo horizon defaults to 49 ticks (three simulated days); `EIDOLON_TICKS=112` runs a seven-day season.
+For a deployed sandbox/testnet instance: `cp .env.example .env`, edit it, then `bash scripts/deploy.sh` — it builds, deploys, and initializes items, coin, and world in sequence, and prints storage commands. Demo horizon defaults to 49 ticks (four dawn snapshots); `EIDOLON_TICKS=112` runs a seven-day season.
 
 ## Dry-run demo
 
@@ -113,6 +110,8 @@ day 3: wealth=642 gini_bps=3848 gdp=0 scarce=meat,medicine
 day 4: wealth=642 gini_bps=3848 gdp=0 scarce=meat,medicine
 demo complete: 4 dawn snapshots, 49 ticks
 ```
+
+Measured on the single-vCPU Ubuntu 24.04 review host; full record in `SUBMISSION-PREP.md`:
 
 ```text
 49 ticks in 76.41s; 27.98 Tgas/tick
