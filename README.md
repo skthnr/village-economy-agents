@@ -148,4 +148,4 @@ NEAR sandbox binaries support Linux x86_64, Linux aarch64, and macOS arm64. Wind
 
 ## Attribution and license
 
-This port derives from an MIT-licensed origin project. See [ATTRIBUTION.md](ATTRIBUTION.md) for commit `e0656ca`, tree `801af5c`, and itemized reuse. The repository uses the MIT license in [LICENSE](LICENSE). Hackathon track: `games`. Development ends 2026-11-14T23:59:00Z (UTC).
+This port derives from an MIT-licensed origin project. See [ATTRIBUTION.md](ATTRIBUTION.md) for commit `e0656ca`, tree `801af5c`, and itemized reuse. The repository uses the MIT license in [LICENSE](LICENSE). Hackathon tracks: `games`, `agents`. Development ends 2026-11-14T23:59:00Z (UTC).
