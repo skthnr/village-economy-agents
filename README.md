@@ -5,6 +5,8 @@
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"fontSize":"1em"}}}%%
 sequenceDiagram
+    accTitle: eidolon runtime flow
+    accDescr: Orchestrator deploys both contracts, creates agent accounts, then perceives, decides, submits actions, settles the market, and rolls ticks.
     autonumber
     participant W as world
     participant I as items
@@ -12,20 +14,20 @@ sequenceDiagram
     participant O as orchestrator
     participant R as relayer
     participant S as sandbox
-    rect rgb(226,238,255)
-    Note over O,S: PHASE 1 — Deploy and init. World registers both storage deposits
+    rect rgba(226,238,255,0.20)
+    Note over O,S: PHASE 1 — Deploy and init contracts
     O->>S: near-sandbox start
     O->>I: new(owner_id)
     O->>K: new(owner_id, total_supply)
     O->>W: new(items_contract, coin_contract, seed_agents)
     end
-    rect rgb(230,247,235)
+    rect rgba(230,247,235,0.20)
     Note over O,W: PHASE 2 — Create agent accounts
     O->>W: create_agent_with_keys(name, fck_key, market_key)
     W-->>O: sub-account created
     end
-    rect rgb(255,244,214)
-    Note over O,W: PHASE 3 — Perceive. One get_perception view per agent
+    rect rgba(255,244,214,0.20)
+    Note over O,W: PHASE 3 — Perceive each agent
     loop each tick until horizon
     par one view per agent
     O->>W: get_perception(agent_id)
@@ -34,12 +36,12 @@ sequenceDiagram
     O->>O: parsePerception
     end
     end
-    rect rgb(243,232,255)
-    Note over O: PHASE 4 — Decide. resolvePolicyMode picks scripted or LLM
+    rect rgba(243,232,255,0.20)
+    Note over O: PHASE 4 — Decide via resolvePolicyMode
     O->>O: decideActions or decideWithLlm
     end
-    rect rgb(255,232,232)
-    Note over O,R: PHASE 5 — Act. Submit queued actions, relayer or direct
+    rect rgba(255,232,232,0.20)
+    Note over O,R: PHASE 5 — Act and submit
     par one submit per agent
     alt relayer configured
     O->>R: relayCoreActions(signed delegate)
@@ -49,7 +51,7 @@ sequenceDiagram
     end
     end
     end
-    rect rgb(224,247,250)
+    rect rgba(224,247,250,0.20)
     Note over O,K: PHASE 6 — Clear the market
     O->>W: post_order(item, quantity, price)
     alt sell side
@@ -63,7 +65,7 @@ sequenceDiagram
     W-->>K: unused amount
     end
     end
-    rect rgb(255,248,225)
+    rect rgba(255,248,225,0.20)
     Note over O,W: PHASE 7 — Roll tick and season
     O->>W: run_tick()
     opt first tick of day
