@@ -3,7 +3,6 @@
 19 agents run a village economy on NEAR. Each villager holds a wallet, an inventory, a body, a job, and a daily routine. One deterministic tick resolves actions, production, spoilage, tax, and market settlement. Items are NEP-245 tokens (`MultiToken` derive: NEP-245 core, metadata, NEP-145 storage). Token ids are the 18 village goods. Coin is a NEP-141 fungible token with fixed supply and `decimals: 0`. This repository is an executable specification of contracts, scripted agents, and tests. [ATTRIBUTION.md](ATTRIBUTION.md) gives the origin and the pinned upstream revision.
 
 ```mermaid
-%%{init: {"theme":"base","themeVariables":{"fontSize":"1em"}}}%%
 sequenceDiagram
     accTitle: eidolon runtime flow
     accDescr: Orchestrator deploys both contracts, creates agent accounts, then perceives, decides, submits actions, settles the market, and rolls ticks.
