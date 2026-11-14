@@ -153,6 +153,13 @@ Supported surface: NEP-245 items with owner-gated mint, burn, and NEP-145 storag
 
 NEAR sandbox binaries support Linux x86_64, Linux aarch64, and macOS arm64. Windows and Intel macOS throw `Unsupported platform`, so run tests and demos inside WSL2 or Linux CI. Contract builds need only Rust. Node 26 is the pinned LTS line.
 
+## Baseline, diff and dependencies
+
+Baseline: tag `pre-hackathon` marks the imported tree at `788541d`. The upstream project is brunnfeld-agentic-world.
+Submission: tag `hackathon-submission` marks the state at `f4a26dc`.
+Diff: `git diff pre-hackathon..hackathon-submission`. After publishing, https://github.com/<owner>/<repo>/compare/pre-hackathon...hackathon-submission.
+Libraries, templates and AI-generated code are listed in `ATTRIBUTION.md`.
+
 ## Attribution and license
 
 This port derives from an MIT-licensed origin project. See [ATTRIBUTION.md](ATTRIBUTION.md) for commit `e0656ca`, tree `801af5c`, and itemized reuse. The repository uses the MIT license in [LICENSE](LICENSE). Hackathon tracks: `games`, `agents`.
