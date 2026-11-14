@@ -28,10 +28,12 @@ pub const ORDER_TTL: u64 = 16;
 /// Refundable storage deposit for one BUY order record (10 millinear).
 pub const BUY_ORDER_DEPOSIT: NearToken = NearToken::from_millinear(10);
 /// One-yocto deposit attached to every outbound `items::mt_transfer`.
-pub const MT_TRANSFER_DEPOSIT_YOCTO: u128 = 1;
+pub const MT_DEPOSIT_YOCTO: u128 = 1;
+pub const ID_SEQ_BITS: u32 = 20;
+pub const SEQUENCE_LIMIT: u64 = 1 << ID_SEQ_BITS;
 
 pub fn order_id(tick: u64, seq: u64) -> u64 {
-    (tick << 20) | seq
+    (tick << ID_SEQ_BITS) | seq
 }
 
 pub fn fill_id(tick: u64, seq: u64) -> u64 {

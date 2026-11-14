@@ -1,14 +1,26 @@
-use near_sdk::{env, json_types::U128, near, AccountId, NearToken, PanicOnDefault};
-use near_sdk_contract_tools::{
-    mt::*,
-    owner::Owner,
-    Owner,
-};
+use near_sdk::{AccountId, NearToken, PanicOnDefault, env, json_types::U128, near};
+use near_sdk_contract_tools::{Owner, mt::*, owner::Owner};
 
 const STORAGE_MIN: NearToken = NearToken::from_yoctonear(2_500_000_000_000_000_000_000);
 const ALL_ITEMS: [&str; 18] = [
-    "wheat", "flour", "bread", "meat", "milk", "eggs", "vegetables", "herbs", "medicine",
-    "iron_ore", "coal", "iron_tools", "timber", "firewood", "furniture", "ale", "meal", "cloth",
+    "wheat",
+    "flour",
+    "bread",
+    "meat",
+    "milk",
+    "eggs",
+    "vegetables",
+    "herbs",
+    "medicine",
+    "iron_ore",
+    "coal",
+    "iron_tools",
+    "timber",
+    "firewood",
+    "furniture",
+    "ale",
+    "meal",
+    "cloth",
 ];
 
 #[derive(MultiToken, Owner, PanicOnDefault)]

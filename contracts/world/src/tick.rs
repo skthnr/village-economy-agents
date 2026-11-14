@@ -1,20 +1,18 @@
 use std::collections::BTreeSet;
 
-use near_sdk::{json_types::U128, AccountId};
+use near_sdk::{AccountId, json_types::U128};
 
 use crate::{
+    World,
     body::{
-        energy_after_noon, hunger_after_dawn, hunger_after_eating, hunger_on_hour, inedible_hint,
-        is_dead, is_starved, satiation_for, sickness_after_dawn, sickness_after_winter,
-        sleep_energy, DEAD_STARVATION, DURABILITY_LOSS, HUNGER_MAX, SPOIL_TICKS,
+        DEAD_STARVATION, DURABILITY_LOSS, HUNGER_MAX, SPOIL_TICKS, energy_after_noon,
+        hunger_after_dawn, hunger_after_eating, hunger_on_hour, inedible_hint, is_dead, is_starved,
+        satiation_for, sickness_after_dawn, sickness_after_winter, sleep_energy,
     },
     events::Event,
     market::trade_volume_slot,
-    recipes::{
-        production_quantity, recipe_for, season_multiplier_bps, valid_production_location, ALL_ITEMS,
-    },
+    recipes::{ALL_ITEMS, production_quantity, recipe_for, season_multiplier_bps, valid_workplace},
     state::{Action, ActionType, EconomySnapshot, OrderSide, Season, WealthEntry},
-    World,
 };
 
 pub const TICKS_PER_DAY: u64 = 16;
@@ -117,12 +115,12 @@ pub fn time_label(tick: u64) -> String {
 }
 
 pub fn is_first_tick_of_day(tick: u64) -> bool {
-    (tick.saturating_sub(1)) % TICKS_PER_DAY == 0
+    (tick.saturating_sub(1)).is_multiple_of(TICKS_PER_DAY)
 }
 
 /// Monday's first tick; the weekly tax runs inside this tick's dawn block.
 pub fn is_week_start(tick: u64) -> bool {
-    tick >= 1 && (tick - 1) % TICKS_PER_SEASON == 0
+    tick >= 1 && (tick - 1).is_multiple_of(TICKS_PER_SEASON)
 }
 
 pub fn weather_for(season: &Season, day_of_season: u8) -> &'static str {
@@ -182,7 +180,8 @@ pub fn gini_bps(wallets: &[u128]) -> u32 {
 }
 
 pub fn sum_trade_volume(ring: &[u128; TICKS_PER_DAY as usize]) -> u128 {
-    ring.iter().fold(0u128, |sum, value| sum.saturating_add(*value))
+    ring.iter()
+        .fold(0u128, |sum, value| sum.saturating_add(*value))
 }
 
 impl World {
@@ -204,7 +203,7 @@ impl World {
         // this tick generates new feedback.
         self.clear_feedback();
 
-        self.enforce_opening_hours(tick);
+        self.check_opening_hours(tick);
         if is_first_tick_of_day(tick) {
             self.dawn_phase(tick);
         }
@@ -234,7 +233,7 @@ impl World {
 
     /// Origin `enforceOpeningHours`: a closed location sends the agent home.
     /// Laws that modify hours are deferred; the base table is origin-exact.
-    fn enforce_opening_hours(&mut self, tick: u64) {
+    fn check_opening_hours(&mut self, tick: u64) {
         let hour_index = hour_of_day(tick).saturating_sub(6);
         for agent in self.sorted_agents() {
             let location = self.location_of(&agent);
@@ -295,13 +294,9 @@ impl World {
                 if satiation == 0 || self.mirror_item_qty(&agent, item) == 0 {
                     continue;
                 }
-                let price = self
-                    .price_index
-                    .get(&item.to_string())
-                    .copied()
-                    .unwrap_or(u64::MAX);
+                let price = self.price_index.get(item).copied().unwrap_or(u64::MAX);
                 // Strict `<` keeps ALL_ITEMS order as the deterministic tie-break.
-                if choice.map_or(true, |(_, best)| price < best) {
+                if choice.is_none_or(|(_, best)| price < best) {
                     choice = Some((item, price));
                 }
             }
@@ -415,10 +410,7 @@ impl World {
                 }
 
                 if total > 0 {
-                    self.push_feedback(
-                        &agent,
-                        format!("Your {total} {item} spoiled overnight."),
-                    );
+                    self.push_feedback(&agent, format!("Your {total} {item} spoiled overnight."));
                 }
                 if had_orders {
                     self.push_feedback(
@@ -566,7 +558,7 @@ impl World {
             }
         }
 
-        self.resolve_production_phase(tick, produce_requests);
+        self.run_production(tick, produce_requests);
     }
 
     fn resolve_eat_action(&mut self, agent: &AccountId, action: &Action) -> String {
@@ -627,11 +619,7 @@ impl World {
         message
     }
 
-    fn resolve_production_phase(
-        &mut self,
-        tick: u64,
-        requests: Vec<(AccountId, String, String)>,
-    ) {
+    fn run_production(&mut self, tick: u64, requests: Vec<(AccountId, String, String)>) {
         let mut produced = BTreeSet::new();
         for (agent, item, location) in requests {
             if produced.contains(&agent) {
@@ -661,11 +649,10 @@ impl World {
             return Err(format!("[Can't do that] No recipe for \"{item}\"."));
         };
 
-        let skill = self
-            .agents
-            .get(agent)
-            .map(|profile| profile.skill.clone())
-            .unwrap_or_default();
+        let (skill, has_tool) = match self.agents.get(agent) {
+            Some(profile) => (profile.skill.as_str(), profile.tool.is_some()),
+            None => ("", false),
+        };
         if skill != recipe.skill {
             return Err(format!(
                 "[Can't do that] You don't have the {} skill.",
@@ -673,16 +660,15 @@ impl World {
             ));
         }
 
-        if !valid_production_location(item, recipe.location, location) {
+        if !valid_workplace(item, recipe.location, location) {
             return Err(format!(
                 "[Can't do that] You must be at {} to produce {item}.",
                 recipe.location
             ));
         }
 
-        let tool = self.agents.get(agent).and_then(|profile| profile.tool.clone());
         let durability = self.tool_state.get(agent).copied().unwrap_or(0);
-        if recipe.needs_tool && (tool.is_none() || durability == 0) {
+        if recipe.needs_tool && (!has_tool || durability == 0) {
             return Err(format!(
                 "[Can't do that] You need working iron tools to produce {item}."
             ));
@@ -760,17 +746,15 @@ impl World {
     fn snapshot_phase(&mut self, tick: u64) {
         let agents = self.sorted_agents();
         let wallets: Vec<u128> = agents.iter().map(|agent| self.mirror_coin(agent)).collect();
-        let total_wealth = wallets.iter().fold(0u128, |sum, value| sum.saturating_add(*value));
+        let total_wealth = wallets
+            .iter()
+            .fold(0u128, |sum, value| sum.saturating_add(*value));
         let gini = gini_bps(&wallets);
         let gdp = sum_trade_volume(&self.trade_volume);
 
         let mut price_index = Vec::with_capacity(ALL_ITEMS.len());
         for item in ALL_ITEMS {
-            let price = self
-                .price_index
-                .get(&item.to_string())
-                .copied()
-                .unwrap_or(0);
+            let price = self.price_index.get(item).copied().unwrap_or(0);
             price_index.push((item.to_string(), U128(price as u128)));
         }
 
@@ -786,11 +770,7 @@ impl World {
             let mut inventory_value = 0u128;
             for item in ALL_ITEMS {
                 let quantity = self.owned_item_qty(agent, item);
-                let price = self
-                    .price_index
-                    .get(&item.to_string())
-                    .copied()
-                    .unwrap_or(0);
+                let price = self.price_index.get(item).copied().unwrap_or(0);
                 inventory_value =
                     inventory_value.saturating_add(quantity.saturating_mul(price as u128));
             }

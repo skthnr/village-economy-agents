@@ -8,29 +8,21 @@ pub mod state;
 pub mod tick;
 
 use near_sdk::{
-    env,
+    AccountId, Allowance, BorshStorageKey, Gas, NearToken, PanicOnDefault, Promise, PublicKey, env,
     json_types::U128,
     near,
     store::{IterableMap, LookupMap},
-    AccountId,
-    Allowance,
-    BorshStorageKey,
-    Gas,
-    NearToken,
-    PanicOnDefault,
-    Promise,
-    PublicKey,
 };
 
 use crate::{
-    body::{is_dead, spoil_ticks_for, DURABILITY_MAX},
+    body::{DURABILITY_MAX, is_dead, spoil_ticks_for},
     external::{ext_coin, ext_items},
-    market::{is_expired, INITIAL_PRICE_INDEX},
+    market::{INITIAL_PRICE_INDEX, is_expired},
     recipes::ALL_ITEMS,
     state::{
         Action, AgentProfile, BodyState, BuyFill, EconomySnapshot, InventoryLine, ItemQty,
         MirrorView, Order, OrderSide, Perception, PerceptionBody, PerceptionProfile, PriceLine,
-        SeedAgent, Season, ToolView, WorldView,
+        Season, SeedAgent, ToolView, WorldView,
     },
     tick::time_label,
 };
@@ -155,7 +147,11 @@ impl World {
                     env::panic_str(&format!("invalid seed agent name: {}", seed.name))
                 });
 
-            if world.agents.insert(account_id.clone(), seed.profile.clone()).is_some() {
+            if world
+                .agents
+                .insert(account_id.clone(), seed.profile.clone())
+                .is_some()
+            {
                 env::panic_str(&format!("duplicate seed agent: {}", seed.name));
             }
 
@@ -266,12 +262,7 @@ impl World {
             .iter()
             .map(|item| PriceLine {
                 item: (*item).to_string(),
-                price: U128(
-                    self.price_index
-                        .get(&(*item).to_string())
-                        .copied()
-                        .unwrap_or(0) as u128,
-                ),
+                price: U128(self.price_index.get(*item).copied().unwrap_or(0) as u128),
             })
             .collect();
         let perception = Perception {
@@ -351,8 +342,7 @@ impl World {
             .get(&agent)
             .cloned()
             .unwrap_or_else(|| env::panic_str("create_agent: name is not a seeded agent"));
-        let allowance =
-            Allowance::limited(NearToken::from_near(8)).unwrap_or(Allowance::Unlimited);
+        let allowance = Allowance::limited(NearToken::from_near(8)).unwrap_or(Allowance::Unlimited);
         let items_deposit = AGENT_ITEMS_DEPOSIT;
         let coin_deposit = STORAGE_DEPOSIT;
 
@@ -510,11 +500,7 @@ impl World {
         }
         let _ = ext_items::ext(self.items_contract.clone())
             .with_static_gas(GAS_FOR_ITEMS_CALL)
-            .burn(
-                env::current_account_id(),
-                item.to_string(),
-                U128(quantity),
-            );
+            .burn(env::current_account_id(), item.to_string(), U128(quantity));
     }
 
     pub(crate) fn equip_tool(&mut self, agent: &AccountId) {
@@ -567,14 +553,12 @@ impl World {
             .cloned()
             .collect();
         orders.sort_by(|left, right| match (left.side, right.side) {
-            (OrderSide::Sell, OrderSide::Sell) => left
-                .price
-                .cmp(&right.price)
-                .then(left.id.cmp(&right.id)),
-            (OrderSide::Buy, OrderSide::Buy) => right
-                .price
-                .cmp(&left.price)
-                .then(left.id.cmp(&right.id)),
+            (OrderSide::Sell, OrderSide::Sell) => {
+                left.price.cmp(&right.price).then(left.id.cmp(&right.id))
+            }
+            (OrderSide::Buy, OrderSide::Buy) => {
+                right.price.cmp(&left.price).then(left.id.cmp(&right.id))
+            }
             (OrderSide::Sell, OrderSide::Buy) => std::cmp::Ordering::Less,
             (OrderSide::Buy, OrderSide::Sell) => std::cmp::Ordering::Greater,
         });
@@ -587,22 +571,22 @@ impl World {
 mod tests {
     use super::*;
     use crate::body::{
-        energy_after_noon, hunger_after_dawn, hunger_on_hour, is_starved, satiation_for,
-        spoil_ticks_for, DURABILITY_LOSS, DURABILITY_MAX, ENERGY_MAX, HUNGER_MAX, SATIATION,
-        SPOIL_TICKS, STARVATION_TICKS,
+        DURABILITY_LOSS, DURABILITY_MAX, ENERGY_MAX, HUNGER_MAX, SATIATION, SPOIL_TICKS,
+        STARVATION_TICKS, energy_after_noon, hunger_after_dawn, hunger_on_hour, is_starved,
+        satiation_for, spoil_ticks_for,
     };
     use crate::market::{
-        expires_at, fill_id, mean_price, order_id, push_price, trade_volume_slot,
-        ORDER_TTL, PRICE_RING_CAP,
+        ORDER_TTL, PRICE_RING_CAP, expires_at, fill_id, mean_price, order_id, push_price,
+        trade_volume_slot,
     };
     use crate::recipes::{
-        apply_multipliers, canonical_item_rank, recipe_for, season_multiplier_bps, ALL_ITEMS,
-        RECIPES, SEASON_BPS,
+        ALL_ITEMS, RECIPES, SEASON_BPS, apply_multipliers, canonical_item_rank, recipe_for,
+        season_multiplier_bps,
     };
     use crate::tick::{
-        day_of_season, day_name, hour_of_day, is_first_tick_of_day, is_week_start, season_for_tick,
-        sleep_quality, sleep_roll, time_label, weather_for, DAYS_PER_SEASON, TICKS_PER_DAY,
-        TICKS_PER_SEASON,
+        DAYS_PER_SEASON, TICKS_PER_DAY, TICKS_PER_SEASON, day_name, day_of_season, hour_of_day,
+        is_first_tick_of_day, is_week_start, season_for_tick, sleep_quality, sleep_roll,
+        time_label, weather_for,
     };
 
     #[test]
@@ -779,7 +763,11 @@ mod tests {
                 .map(|(_, price)| *price),
             Some(15)
         );
-        assert!(INITIAL_PRICE_INDEX.iter().all(|(name, _)| *name != "unknown"));
+        assert!(
+            INITIAL_PRICE_INDEX
+                .iter()
+                .all(|(name, _)| *name != "unknown")
+        );
     }
 
     #[test]

@@ -1,34 +1,24 @@
 use near_sdk::{
-    env,
-    json_types::U128,
-    near,
-    AccountId,
-    Gas,
-    NearToken,
-    Promise,
-    PromiseError,
-    PromiseOrValue,
+    AccountId, Gas, NearToken, Promise, PromiseError, PromiseOrValue, env, json_types::U128, near,
 };
 
 use crate::{
+    World, WorldExt,
     events::Event,
     external::{ext_coin, ext_items, ext_self},
     market::{
-        expires_at, fill_cost, fill_id, fill_quantity, is_expired, mean_price, order_id,
-        parse_buy_msg, parse_sell_msg, push_price, trade_id, trade_volume_slot,
-        BUY_ORDER_DEPOSIT, MT_TRANSFER_DEPOSIT_YOCTO,
+        BUY_ORDER_DEPOSIT, MT_DEPOSIT_YOCTO, SEQUENCE_LIMIT, expires_at, fill_cost, fill_id,
+        fill_quantity, is_expired, mean_price, order_id, parse_buy_msg, parse_sell_msg, push_price,
+        trade_id, trade_volume_slot,
     },
     recipes::canonical_item_rank,
     state::{BuyFill, Order, OrderSide},
-    World,
-    WorldExt,
 };
 
 const GAS_FOR_TOKEN_CALL: Gas = Gas::from_tgas(30);
-const GAS_FOR_COIN_TRANSFER: Gas = Gas::from_tgas(15);
+const GAS_COIN_XFER: Gas = Gas::from_tgas(15);
 const GAS_FOR_CALLBACK: Gas = Gas::from_tgas(60);
 const ONE_YOCTO: NearToken = NearToken::from_yoctonear(1);
-const SEQUENCE_LIMIT: u64 = 1 << 20;
 
 #[near]
 impl World {
@@ -116,10 +106,8 @@ impl World {
         .emit();
 
         match order.side {
-            OrderSide::Sell =>
-                self.refund_sell_order(&order.agent_id, &order.item, order.quantity),
-            OrderSide::Buy => Promise::new(order.agent_id)
-                .transfer(BUY_ORDER_DEPOSIT),
+            OrderSide::Sell => self.refund_sell_order(&order.agent_id, &order.item, order.quantity),
+            OrderSide::Buy => Promise::new(order.agent_id).transfer(BUY_ORDER_DEPOSIT),
         }
     }
 
@@ -161,7 +149,10 @@ impl World {
             env::panic_str("ft_on_transfer: order price exceeds max_price");
         }
         let buyer_location = self.location_of(&sender_id);
-        if buyer_location.rsplit(':').next().unwrap_or(buyer_location.as_str())
+        if buyer_location
+            .rsplit(':')
+            .next()
+            .unwrap_or(buyer_location.as_str())
             != "Village Square"
         {
             env::panic_str("ft_on_transfer: buyer must be at Village Square");
@@ -194,14 +185,8 @@ impl World {
         );
         let _ = ext_items::ext(self.items_contract.clone())
             .with_static_gas(GAS_FOR_TOKEN_CALL)
-            .with_attached_deposit(NearToken::from_yoctonear(MT_TRANSFER_DEPOSIT_YOCTO))
-            .mt_transfer(
-                sender_id.clone(),
-                order.item,
-                U128(quantity),
-                None,
-                None,
-            )
+            .with_attached_deposit(NearToken::from_yoctonear(MT_DEPOSIT_YOCTO))
+            .mt_transfer(sender_id.clone(), order.item, U128(quantity), None, None)
             .then(
                 ext_self::ext(env::current_account_id())
                     .with_static_gas(GAS_FOR_CALLBACK)
@@ -298,8 +283,7 @@ impl World {
                     self.update_price_index(&order.item, order.price);
 
                     let slot = trade_volume_slot(self.tick);
-                    self.trade_volume[slot] =
-                        self.trade_volume[slot].saturating_add(fill.cost);
+                    self.trade_volume[slot] = self.trade_volume[slot].saturating_add(fill.cost);
                     let settled_trade_id = trade_id(self.tick, self.next_trade_seq);
                     self.next_trade_seq = self.next_trade_seq.saturating_add(1);
 
@@ -323,15 +307,11 @@ impl World {
                             .get(&buyer)
                             .map(|profile| profile.tool.is_some())
                             .unwrap_or(false);
-                        let durability =
-                            self.tool_state.get(&buyer).copied().unwrap_or(0);
+                        let durability = self.tool_state.get(&buyer).copied().unwrap_or(0);
                         if !equipped || durability == 0 {
                             self.agent_burn_item(&buyer, "iron_tools", 1);
                             self.equip_tool(&buyer);
-                            self.push_feedback(
-                                &buyer,
-                                "You equipped a fresh set of iron tools.",
-                            );
+                            self.push_feedback(&buyer, "You equipped a fresh set of iron tools.");
                         }
                     }
                 }
@@ -381,17 +361,16 @@ impl World {
         self.mirror_add_item(agent, item, quantity);
         ext_items::ext(self.items_contract.clone())
             .with_static_gas(GAS_FOR_TOKEN_CALL)
-            .with_attached_deposit(NearToken::from_yoctonear(MT_TRANSFER_DEPOSIT_YOCTO))
+            .with_attached_deposit(NearToken::from_yoctonear(MT_DEPOSIT_YOCTO))
             .mt_transfer(agent.clone(), item.to_string(), U128(quantity), None, None)
     }
-
 
     fn pay_coin(&mut self, receiver: AccountId, amount: u128) {
         if amount == 0 {
             return;
         }
         let _ = ext_coin::ext(self.coin_contract.clone())
-            .with_static_gas(GAS_FOR_COIN_TRANSFER)
+            .with_static_gas(GAS_COIN_XFER)
             .with_attached_deposit(ONE_YOCTO)
             .ft_transfer(receiver, U128(amount), None);
     }
@@ -441,8 +420,7 @@ impl World {
                             order.quantity, order.item
                         ),
                     );
-                    let _ = Promise::new(order.agent_id)
-                        .transfer(BUY_ORDER_DEPOSIT);
+                    let _ = Promise::new(order.agent_id).transfer(BUY_ORDER_DEPOSIT);
                 }
             }
         }
@@ -521,7 +499,7 @@ impl World {
 mod tests {
     use super::*;
     use crate::market::order_id;
-    use near_sdk::test_utils::{accounts, VMContextBuilder};
+    use near_sdk::test_utils::{VMContextBuilder, accounts};
     use near_sdk::testing_env;
 
     fn setup() -> World {

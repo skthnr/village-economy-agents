@@ -1,9 +1,5 @@
-use near_sdk::{env, json_types::U128, near, AccountId, NearToken};
-use near_sdk_contract_tools::{
-    ft::*,
-    owner::Owner,
-    Owner,
-};
+use near_sdk::{AccountId, NearToken, env, json_types::U128, near};
+use near_sdk_contract_tools::{Owner, ft::*, owner::Owner};
 
 const STORAGE_MIN: NearToken = NearToken::from_yoctonear(2_500_000_000_000_000_000_000);
 
@@ -24,9 +20,11 @@ impl Coin {
             max: None,
         });
 
-        if let Err(error) =
-            <Self as Nep141Controller>::deposit_unchecked(&mut contract, owner_id.as_ref(), total_supply.0)
-        {
+        if let Err(error) = <Self as Nep141Controller>::deposit_unchecked(
+            &mut contract,
+            owner_id.as_ref(),
+            total_supply.0,
+        ) {
             env::panic_str(&format!("coin initial supply deposit failed: {error}"));
         }
 

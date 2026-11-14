@@ -1,8 +1,4 @@
-use near_sdk::{
-    json_types::U128,
-    near,
-    AccountId,
-};
+use near_sdk::{AccountId, json_types::U128, near};
 
 /// One item and a raw integer quantity. Used for stored state.
 pub type ItemQty = (String, u128);
@@ -55,7 +51,6 @@ pub struct Order {
     #[serde(skip)]
     pub pending_fills: u32,
 }
-
 
 #[near(serializers = [json, borsh])]
 #[derive(Clone, Debug, PartialEq, Eq)]

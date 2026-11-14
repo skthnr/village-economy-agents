@@ -9,7 +9,7 @@ pub const DEAD_STARVATION: u8 = u8::MAX;
 
 /// One origin energy point is stored as ten tenths. Origin winter heating
 /// subtracts 1.0 energy, i.e. ten tenths.
-pub const WINTER_ENERGY_PENALTY_TENTHS: u8 = 10;
+pub const WINTER_ENERGY_LOSS: u8 = 10;
 
 /// Origin sleep quality values, stored in energy tenths (good/fair/poor/sick).
 pub const SLEEP_GOOD: u8 = 90;
@@ -51,9 +51,9 @@ pub fn inedible_hint(item: &str) -> Option<&'static str> {
         "wheat" => Some(
             "Wheat must be milled into flour (at the Mill) then baked into bread (at the Bakery). Buy bread instead.",
         ),
-        "flour" => {
-            Some("Flour must be baked into bread (at the Bakery) before it can be eaten. Buy bread instead.")
-        }
+        "flour" => Some(
+            "Flour must be baked into bread (at the Bakery) before it can be eaten. Buy bread instead.",
+        ),
         "iron_ore" => Some("Iron ore is not food."),
         "coal" => Some("Coal is not food."),
         "timber" => Some("Timber is not food."),
@@ -71,7 +71,7 @@ pub fn hunger_after_dawn(hunger: u8) -> u8 {
 }
 
 pub fn hunger_on_hour(hunger: u8, hour: u8) -> u8 {
-    if hour % 4 == 0 {
+    if hour.is_multiple_of(4) {
         (hunger + 1).min(HUNGER_MAX)
     } else {
         hunger
@@ -89,7 +89,7 @@ pub fn is_starved(streak: u8) -> bool {
 }
 
 pub fn is_dead(streak: u8) -> bool {
-    streak >= DEAD_STARVATION
+    streak == DEAD_STARVATION
 }
 
 /// Origin energy loss: −0.5 per hour from 14:00 onwards, stored as tenths.
@@ -99,7 +99,7 @@ pub fn energy_after_noon(energy: u8) -> u8 {
 
 /// Origin winter heating without firewood: −1.0 energy, +1 sickness capped at 3.
 pub fn energy_after_winter(energy: u8) -> u8 {
-    energy.saturating_sub(WINTER_ENERGY_PENALTY_TENTHS)
+    energy.saturating_sub(WINTER_ENERGY_LOSS)
 }
 
 pub fn sickness_after_winter(sickness: u8) -> u8 {

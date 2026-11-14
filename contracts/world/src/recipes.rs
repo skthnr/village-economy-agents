@@ -202,9 +202,7 @@ pub const SEASON_BPS: [[u32; 4]; 18] = [
 ];
 
 /// Base recipe quantities in `ALL_ITEMS` order (the recipe table order differs).
-const RECIPE_BASE_QTY: [u128; 18] = [
-    4, 2, 4, 2, 3, 2, 3, 2, 1, 3, 2, 1, 3, 4, 1, 4, 3, 1,
-];
+const RECIPE_BASE_QTY: [u128; 18] = [4, 2, 4, 2, 3, 2, 3, 2, 1, 3, 2, 1, 3, 4, 1, 4, 3, 1];
 
 const fn season_column(season: &Season) -> usize {
     match season {
@@ -283,7 +281,7 @@ pub fn apply_multipliers(base: u128, season_bps: u32) -> u128 {
 /// Farm items may be produced at any of the three farms; herbs only in the
 /// Forest. All other recipes require their exact location. Village-qualified
 /// names ("Brunnfeld:Farm 1") are matched on the bare location.
-pub fn valid_production_location(item: &str, recipe_location: &str, location: &str) -> bool {
+pub fn valid_workplace(item: &str, recipe_location: &str, location: &str) -> bool {
     let bare = location.rsplit(':').next().unwrap_or(location);
     if bare == recipe_location {
         return true;
@@ -302,17 +300,22 @@ mod tests {
 
     #[test]
     fn farm_aliases_match_all_farms() {
-        assert!(valid_production_location("wheat", "Farm 1", "Farm 3"));
-        assert!(valid_production_location("vegetables", "Farm 3", "Farm 2"));
-        assert!(valid_production_location("eggs", "Farm 3", "Farm 1"));
-        assert!(valid_production_location("herbs", "Forest", "Brunnfeld:Forest"));
-        assert!(!valid_production_location("bread", "Bakery", "Farm 1"));
-        assert!(!valid_production_location("wheat", "Farm 1", "Mill"));
+        assert!(valid_workplace("wheat", "Farm 1", "Farm 3"));
+        assert!(valid_workplace("vegetables", "Farm 3", "Farm 2"));
+        assert!(valid_workplace("eggs", "Farm 3", "Farm 1"));
+        assert!(valid_workplace("herbs", "Forest", "Brunnfeld:Forest"));
+        assert!(!valid_workplace("bread", "Bakery", "Farm 1"));
+        assert!(!valid_workplace("wheat", "Farm 1", "Mill"));
     }
 
     #[test]
     fn production_qty_table_matches_multipliers() {
-        let seasons = [Season::Spring, Season::Summer, Season::Autumn, Season::Winter];
+        let seasons = [
+            Season::Spring,
+            Season::Summer,
+            Season::Autumn,
+            Season::Winter,
+        ];
         for item in ALL_ITEMS {
             let recipe = recipe_for(item).unwrap_or_else(|| panic!("missing recipe for {item}"));
             for season in seasons {
