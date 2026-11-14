@@ -162,4 +162,4 @@ Libraries, templates and AI-generated code are listed in `ATTRIBUTION.md`.
 
 ## Attribution and license
 
-This port derives from an MIT-licensed origin project. See [ATTRIBUTION.md](ATTRIBUTION.md) for itemized reuse. The repository uses the MIT license in [LICENSE](LICENSE). Hackathon tracks: `games`, `agents`.
+This port derives from an MIT-licensed origin project. See [ATTRIBUTION.md](ATTRIBUTION.md) for itemized reuse. The repository uses the MIT license in [LICENSE](LICENSE). Hackathon tracks: `games`, `agents`. Q-015 (second project on this email): **portico** (x402 payment rail, tracks `realworld`, `business`).
