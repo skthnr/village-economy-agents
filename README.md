@@ -156,7 +156,7 @@ NEAR sandbox binaries support Linux x86_64, Linux aarch64, and macOS arm64. Wind
 ## Baseline, diff and dependencies
 
 Baseline: tag `pre-hackathon` marks the imported tree at `788541d`. The upstream project is brunnfeld-agentic-world.
-Submission: tag `hackathon-submission` marks the submitted state; `git rev-parse --short hackathon-submission` prints it.
+Submission: tag `hackathon-submission` marks the submitted state. `git rev-parse --short hackathon-submission` prints it.
 Diff: `git diff pre-hackathon..hackathon-submission`. After publishing, https://github.com/<owner>/<repo>/compare/pre-hackathon...hackathon-submission.
 Libraries, templates and AI-generated code are listed in `ATTRIBUTION.md`.
 
