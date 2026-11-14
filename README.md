@@ -148,3 +148,7 @@ The repository URL, pinned commit `e0656ca`, tree `801af5c`, and the itemized re
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## Hackathon
+
+Track: `games`. Development ends 2026-11-14T23:59:00Z (UTC).
