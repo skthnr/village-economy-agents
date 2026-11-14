@@ -4,18 +4,18 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22.22.2",
-    "pnpm": ">=10.4.1"
+    "node": ">=26.13.1",
+    "pnpm": ">=12.18.0"
   },
   "scripts": {
     "start": "node --env-file=.env --import=tsx src/run.ts"
   },
   "dependencies": {
     "near-api-js": "7.5.3",
-    "openai": "7.55.0"
+    "openai": "7.57.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "^26.6.6",
     "tsx": "4.23.15",
     "typescript": "7.0.2"
   }

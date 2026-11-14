@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createHash } from "node:crypto";
 import { teraToGas } from "near-api-js";
 
 import {
@@ -39,6 +40,7 @@ import {
 const TICKS = Number(process.env.EIDOLON_TICKS ?? 112);
 const MILLER_STOP_TICK = 48;
 const SCENARIO_TICKS = Number(process.env.EIDOLON_TICKS ?? 49);
+const DET_TICKS = Number(process.env.EIDOLON_DET_TICKS ?? 112);
 
 interface SimulationTrace {
   snapshot: string;
@@ -105,7 +107,11 @@ async function executeMarketAction(
 }
 
 
-async function runPolicySimulation(economy: Economy, withActions = true): Promise<SimulationTrace> {
+async function simulate(
+  economy: Economy,
+  withActions = true,
+  ticks = TICKS,
+): Promise<SimulationTrace> {
   const trace: SimulationTrace = {
     snapshot: "",
     breadSupply: [],
@@ -116,9 +122,21 @@ async function runPolicySimulation(economy: Economy, withActions = true): Promis
   };
   const gerda = requireAgent(economy, "gerda");
 
+  const anselm = requireAgent(economy, "anselm");
+
   if (!withActions) {
-    for (let tick = 1; tick <= TICKS; tick += 1) {
+    for (let tick = 1; tick <= ticks; tick += 1) {
       await executeTick(economy);
+      const [bread, flour, millerFlour, bakerFlour] = await Promise.all([
+        mtSupply(economy, "bread"),
+        mtSupply(economy, "flour"),
+        mtBalanceOf(economy, gerda.accountId, "flour"),
+        mtBalanceOf(economy, anselm.accountId, "flour"),
+      ]);
+      trace.breadSupply.push(bread);
+      trace.flourSupply.push(flour);
+      trace.millerFlour.push(millerFlour);
+      trace.bakerFlour.push(bakerFlour);
     }
     trace.snapshot = JSON.stringify(await getEconomySnapshot(economy)).replaceAll(
       `.${economy.ids.world}`,
@@ -126,9 +144,8 @@ async function runPolicySimulation(economy: Economy, withActions = true): Promis
     );
     return trace;
   }
-  const anselm = requireAgent(economy, "anselm");
 
-  for (let tick = 1; tick <= TICKS; tick += 1) {
+  for (let tick = 1; tick <= ticks; tick += 1) {
     const decisions: TickDecision[] = await Promise.all(
       AGENT_ORDER.map(async (name) => {
         const agent = requireAgent(economy, name);
@@ -191,7 +208,11 @@ async function runPolicySimulation(economy: Economy, withActions = true): Promis
   return trace;
 }
 
-function assertDeterminism(first: SimulationTrace, second: SimulationTrace): void {
+function assertDeterminism(
+  first: SimulationTrace,
+  second: SimulationTrace,
+  ticks = TICKS,
+): void {
   assert.equal(
     first.snapshot,
     second.snapshot,
@@ -226,43 +247,40 @@ function assertDeterminism(first: SimulationTrace, second: SimulationTrace): voi
   };
   assert.equal(snapshot.price_index.length, 18, "snapshot carries the 18 prices");
   assert.equal(snapshot.wealth.length, 19, "snapshot carries all 19 villagers");
-  assert.ok(snapshot.tick >= 1 && snapshot.tick <= TICKS);
+  assert.ok(snapshot.tick >= 1 && snapshot.tick <= ticks);
 }
 
-function assertBreadHaltsWithoutFlour(trace: SimulationTrace): void {
-  assert.equal(
-    trace.bakerFlour[TICKS - 1],
-    0n,
-    "the baker has no flour left at the end of the week",
-  );
-  const firstZeroFlour = trace.bakerFlour.findIndex((value) => value === 0n);
-  assert.ok(firstZeroFlour >= 0, "baker consumes the starting flour");
-  const lastBreadIncrease = trace.breadSupply.reduce(
-    (last, value, index) =>
-      index > 0 && value > (trace.breadSupply[index - 1] ?? value)
-        ? index
-        : last,
-    -1,
-  );
-  assert.ok(
-    lastBreadIncrease <= firstZeroFlour,
-    `bread cannot increase after the baker's flour runs out (last increase ${lastBreadIncrease}, first zero ${firstZeroFlour})`,
-  );
-
-  const stoppedIndex = MILLER_STOP_TICK - 1;
-  const stoppedFlour = trace.flourSupply[stoppedIndex];
-  assert.ok(stoppedFlour !== undefined);
-  for (let index = stoppedIndex; index < TICKS; index += 1) {
-    assert.equal(
-      trace.flourSupply[index],
-      stoppedFlour,
-      `flour supply changed after the miller stopped (index ${index})`,
-    );
+/**
+ * P11 oracle: a streaming SHA-256 digest over the full trace. Every component
+ * is fed with an incremental update() call, so no concatenated intermediate
+ * string is built. Two deterministic runs must produce one identical digest.
+ */
+function digest(trace: SimulationTrace): string {
+  const hash = createHash("sha256");
+  hash.update(trace.snapshot);
+  hash.update("\n");
+  for (const series of [
+    trace.flourSupply,
+    trace.breadSupply,
+    trace.millerFlour,
+    trace.bakerFlour,
+  ]) {
+    for (const value of series) {
+      hash.update(value.toString());
+      hash.update(",");
+    }
+    hash.update("|");
   }
-
+  hash.update("\n");
+  for (const failure of trace.failures) {
+    hash.update(failure);
+    hash.update(";");
+  }
+  return hash.digest("hex");
 }
 
-async function assertMirrorEqualsLedger(economy: Economy, name: string): Promise<void> {
+
+async function assertMirror(economy: Economy, name: string): Promise<void> {
   const agent = requireAgent(economy, name);
   const perception = parsePerception(await getPerception(economy, agent.accountId));
   assert.equal(
@@ -537,15 +555,15 @@ async function assertScenarioTick(
 ): Promise<void> {
   if (tick === 1) {
     assert.equal(bread, 12n, "the baker bakes the first flour at tick 1");
-    await assertMirrorEqualsLedger(economy, "hans");
-    await assertMirrorEqualsLedger(economy, "otto");
+    await assertMirror(economy, "hans");
+    await assertMirror(economy, "otto");
   }
   if (tick === 2) {
     assert.equal(bread, 16n, "the baker bakes the second flour at tick 2");
     assert.equal(bakerFlour, 0n, "the baker's starting flour is exhausted");
-    await assertMirrorEqualsLedger(economy, "hans");
-    await assertMirrorEqualsLedger(economy, "wulf");
-    await assertMirrorEqualsLedger(economy, "gerda");
+    await assertMirror(economy, "hans");
+    await assertMirror(economy, "wulf");
+    await assertMirror(economy, "gerda");
   }
   if (tick === 3) {
     assert.equal(millerFlour, 6n, "the miller mills the bought wheat");
@@ -672,6 +690,40 @@ test(
     try {
       const economy = await deployEconomy(harness, "c");
       await runScenario(economy);
+    } finally {
+      await stopHarness(harness);
+    }
+  },
+);
+
+test(
+  `${DET_TICKS}-tick determinism: two independent economies yield one state digest`,
+  { timeout: 30 * 60 * 1000 },
+  async () => {
+    const harness: Harness = await startHarness();
+    const started = Date.now();
+    try {
+      const first = await deployEconomy(harness, "detone");
+      const second = await deployEconomy(harness, "dettwo");
+      const a = await simulate(first, false, DET_TICKS);
+      const b = await simulate(second, false, DET_TICKS);
+      assertDeterminism(a, b, DET_TICKS);
+      const digestA = digest(a);
+      const digestB = digest(b);
+      assert.equal(
+        digestA,
+        digestB,
+        `two independent ${DET_TICKS}-tick runs must share one state digest`,
+      );
+      const expected = process.env.EIDOLON_DET_DIGEST;
+      if (expected !== undefined) {
+        assert.equal(digestA, expected, "state digest must match the golden");
+      }
+      const elapsed = ((Date.now() - started) / 1000).toFixed(2);
+      console.log(
+        `[determinism] ticks=${DET_TICKS} traces=${a.flourSupply.length} ` +
+          `digest=${digestA} elapsed=${elapsed}s`,
+      );
     } finally {
       await stopHarness(harness);
     }

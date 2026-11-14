@@ -3,11 +3,19 @@ import {
   JsonRpcProvider,
   KeyPair,
   KeyPairSigner,
-  nearToYocto,
-  teraToGas,
   type KeyPairString,
 } from "near-api-js";
 
+import {
+  BUY_CALL_GAS,
+  CANCEL_CALL_GAS,
+  NO_DEPOSIT,
+  ONE_YOCTO,
+  ORDER_DEPOSIT,
+  RUN_TICK_GAS,
+  TOKEN_CALL_GAS,
+  WORLD_CALL_GAS,
+} from "./constants.js";
 import { ensureAgentKeys } from "./keys.js";
 import { ACTION_TOOLS, decideWithLlm } from "./llm.js";
 import { parsePerception, renderPerception, type Action, type Perception } from "./perception.js";
@@ -20,14 +28,6 @@ import {
 import { selectCoreActions, submitCoreActionsViaRelayer } from "./relayer.js";
 
 const DEFAULT_TICKS = 112;
-const WORLD_CALL_GAS = teraToGas(30);
-const TOKEN_CALL_GAS = teraToGas(100);
-const BUY_CALL_GAS = teraToGas(160);
-const CANCEL_CALL_GAS = teraToGas(60);
-const RUN_TICK_GAS = teraToGas(600);
-const NO_DEPOSIT = 0n;
-const ONE_YOCTO = 1n;
-const ORDER_DEPOSIT = nearToYocto("0.01");
 
 interface RunConfig {
   worldAccount: string;

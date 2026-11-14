@@ -1,16 +1,14 @@
 # eidolon
 
-A 19-agent village economy running on NEAR. Every villager is an on-chain
-actor with a wallet, an inventory, a body, a job, and a daily routine; a
-deterministic tick resolves their submitted actions, production, spoilage,
-taxes, and market settlement. Items are a **NEP-245 multi-token**
-(`MultiToken` derive: NEP-245 core, metadata, NEP-145 storage) whose token ids
-are the 18 village goods. Coin is a **NEP-141 fungible token** with a fixed
-supply and `decimals: 0`.
+A 19-agent village economy runs on NEAR.
+Each villager is an on-chain actor with a wallet, an inventory, a body, a job, and a daily routine.
+A deterministic tick resolves actions, production, spoilage, taxes, and market settlement.
+Items are a **NEP-245 multi-token** (`MultiToken` derive: NEP-245 core, metadata, NEP-145 storage).
+Token ids are the 18 village goods.
+Coin is a **NEP-141 fungible token** with a fixed supply and `decimals: 0`.
 
-This repository is an executable spec: the contracts, the scripted agents, and
-the test suite are the documentation. See [ATTRIBUTION.md](ATTRIBUTION.md) for
-the origin disclosure and the pinned upstream revision.
+This repository is an executable spec: contracts, scripted agents, and tests are the documentation.
+[ATTRIBUTION.md](ATTRIBUTION.md) records the origin disclosure and the pinned upstream revision.
 
 ## Architecture
 
@@ -21,37 +19,36 @@ the origin disclosure and the pinned upstream revision.
 | `contracts/coin` (`eidolon-coin`) | `coin.eidolon.testnet` | NEP-141 coin; fixed supply minted to world at init, transfers only |
 | `orchestrator/` | off-chain | Fetches perception, chooses scripted or LLM actions, submits them, calls `run_tick` |
 
-The world contract never reads token balances during view calls. It maintains
-`coin_balance_mirror` and `item_balance_mirror`, updated by the callbacks and
-cross-contract flows that own every balance change.
+View calls never read token balances.
+`coin_balance_mirror` and `item_balance_mirror` track every balance change.
+Callbacks and cross-contract flows own all balance updates.
 
 ### Simulation rules
 
-- 16 ticks per day, 7 days per season, 112 ticks per season; tick 1 is
-  `Monday, 06:00`, spring, day 1. One tick is one simulated hour.
-- Recipes, season multipliers, satiation, spoilage, tool wear, hunger, tax, and
-  the initial price index are ported from the origin tables.
+- 16 ticks per day, 7 days per season, 112 ticks per season.
+- Tick 1 is `Monday, 06:00`, spring, day 1. One tick is one simulated hour.
+- Recipes, season multipliers, satiation, spoilage, tool wear, hunger, tax, and the initial price index come from the origin tables.
 - Order ids are `(tick << 20) | seq`; fill ids are `(tick << 20) | next_fill_seq`.
-- The origin random sleep roll is replaced by
-  `((tick / 16) * 19 + agent_index) % 100`. There is no RNG and no wall clock in
-  the engine path. Two runs over the same inputs produce the same state.
+- The origin random sleep roll becomes `((tick / 16) * 19 + agent_index) % 100`.
+- The engine path contains no RNG and no wall clock.
+- Two runs over the same inputs produce the same state.
 
 ## Quickstart
 
-The demo needs only Node.js: it starts a local `near-sandbox` chain, deploys
-the release contracts, and runs 19 scripted agents for 49 ticks with zero real
-funds, no faucet, and no API keys.
+The demo needs only Node.js.
+It starts a local `near-sandbox` chain and deploys the release contracts.
+It runs 19 scripted agents for 49 ticks with zero real funds, no faucet, and no API keys.
 
 ```bash
 npm install
 npm run demo
 ```
 
-`npm run demo` prints one snapshot per simulated day. `npm run measure` runs
-the same 49-tick workload and prints gas and wall-clock per tick. `npm test`
-runs the unit, legacy-vector, relayer, and 49-tick simulation suites.
+`npm run demo` prints one snapshot per simulated day.
+`npm run measure` runs the same 49-tick workload and prints gas and wall-clock per tick.
+`npm test` runs the unit, legacy-vector, relayer, 49-tick simulation, and 112-tick determinism suites.
 
-Contract build (needs Rust, `cargo-near`, and `near-cli-rs`):
+Contract build needs Rust, `cargo-near`, and `near-cli-rs`:
 
 ```bash
 (cd contracts/items && cargo near build non-reproducible-wasm)
@@ -62,17 +59,17 @@ cp .env.example .env
 bash scripts/deploy.sh
 ```
 
-`scripts/deploy.sh` builds and deploys items, coin, and world in that order,
-initializes each contract, and prints the storage-registration commands that
-follow. The orchestrator target API is documented by the contract signatures:
-`get_perception`, `submit_actions`, and `run_tick` on the world contract; the
-relayer path is a later wave.
+`scripts/deploy.sh` builds and deploys items, coin, and world in that order.
+It initializes each contract and prints the storage-registration commands that follow.
+Contract signatures document the orchestrator target API:
+`get_perception`, `submit_actions`, and `run_tick` on the world contract.
+The relayer path is a later wave.
 
 ## Dry-run demo
 
-The default run is 49 ticks (three simulated days); set
-`EIDOLON_TICKS=112` for a full seven-day season. The output below is from the
-W4 measurement run on Ubuntu 24.04, one vCPU (numbers vary by host):
+The default run is 49 ticks (three simulated days).
+Set `EIDOLON_TICKS=112` for a full seven-day season.
+Output below is from the W4 measurement run on Ubuntu 24.04, one vCPU (numbers vary by host):
 
 ```text
 eidolon demo: 19 agents, 49 ticks, zero real funds, scripted policy
@@ -90,17 +87,11 @@ Measured with `npm run measure` on the same host:
 storage: 1635400 bytes across world/items/coin
 ```
 
-The gas figure is the sum of `receipts_outcome[].outcome.gas_burnt` over the
-49 tick transactions; storage is `view_account.storage_usage` summed over the
-world, items, and coin accounts.
-
-A second run on the same host completed in 71.77 s with the same
-30.44 Tgas/tick and 1,635,400 bytes, confirming the deterministic gas count.
-
-The demo and measurement scripts are `demo.mjs` and `scripts/measure.mjs`;
-both import the same `tests/demo-runner.mjs` loop, so the measured workload is
-the demo workload.
-
+The gas figure sums `receipts_outcome[].outcome.gas_burnt` over the 49 tick transactions.
+Storage sums `view_account.storage_usage` over the world, items, and coin accounts.
+A second run on the same host completed in 71.77 s with the same 30.44 Tgas/tick and 1,635,400 bytes.
+`demo.mjs` and `scripts/measure.mjs` import the same `tests/demo-runner.mjs` loop.
+The measured workload equals the demo workload.
 
 ## Environment variables
 
@@ -121,7 +112,8 @@ the demo workload.
 | `AGENT_KEYSTORE_DIR` | Directory for generated NPC keys (gitignored) |
 | `EIDOLON_TICKS` | Demo/measure horizon (default 49) |
 
-`.env` and `.keys/` are gitignored. No secret value belongs in a tracked file.
+`.env` and `.keys/` are gitignored.
+No secret value belongs in a tracked file.
 
 ## Scope
 
@@ -129,8 +121,7 @@ Implemented by this spec:
 
 - NEP-245 items with owner-gated mint/burn and NEP-145 storage
 - NEP-141 fixed-supply coin
-- World state, recipe/economy tables, deterministic time and body helpers,
-  event enum, genesis initialization, and state-local views
+- World state, recipe/economy tables, deterministic time and body helpers, event enum, genesis initialization, and state-local views
 - Deterministic scripted NPC policy and an optional NEAR AI Cloud policy
 - Direct action submission and owner-invoked tick execution
 
@@ -141,22 +132,18 @@ Deferred from the hackathon build, deliberately:
 - Multi-village travel and player-controlled agents
 - Loans, hired labor, wages, and barter scanning
 
-The port covers the shipped economy only. The unmodified origin snapshot is
-not part of this repository.
-
 ## Platform limits
 
-NEAR sandbox binaries support Linux x86_64, Linux aarch64, and macOS arm64 only;
-Windows and Intel macOS throw `Unsupported platform`. On Windows, run the test
-and demo suites inside WSL2 or on a Linux CI runner. Contract builds only need
-the Rust toolchain and do not require a sandbox. Node 22 is the pinned
-maintenance LTS line.
+NEAR sandbox binaries support Linux x86_64, Linux aarch64, and macOS arm64 only.
+Windows and Intel macOS throw `Unsupported platform`.
+On Windows, run the test and demo suites inside WSL2 or on a Linux CI runner.
+Contract builds need only the Rust toolchain; they do not require a sandbox.
+Node 26 is the pinned maintenance LTS line.
 
 ## Attribution
 
-This is a fork-derived port of an MIT-licensed origin project. The repository
-URL, pinned commit `e0656ca`, tree `801af5c`, and the itemized reuse are in
-[ATTRIBUTION.md](ATTRIBUTION.md).
+This is a fork-derived port of an MIT-licensed origin project.
+The repository URL, pinned commit `e0656ca`, tree `801af5c`, and the itemized reuse are in [ATTRIBUTION.md](ATTRIBUTION.md).
 
 ## License
 

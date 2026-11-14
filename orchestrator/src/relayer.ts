@@ -1,24 +1,15 @@
 import {
   actions as nearActions,
   encodeSignedDelegate,
-  teraToGas,
   type Account,
   type SignedDelegate,
 } from "near-api-js";
 
+import { CORE_ACTION_TYPES, NO_DEPOSIT, WORLD_CALL_GAS } from "./constants.js";
 import type { Action } from "./perception.js";
 
-const SUBMIT_ACTIONS_GAS = teraToGas(30);
-const NO_DEPOSIT = 0n;
 const DELEGATE_BLOCK_HEIGHT_TTL = 120;
 const RESPONSE_TEXT_LIMIT = 300;
-
-const CORE_ACTION_TYPES: Readonly<Record<string, true>> = {
-  move_to: true,
-  speak: true,
-  produce: true,
-  eat: true,
-};
 
 
 /**
@@ -73,7 +64,7 @@ export async function submitCoreActionsViaRelayer(
       nearActions.functionCall(
         "submit_actions",
         { actions: core },
-        SUBMIT_ACTIONS_GAS,
+        WORLD_CALL_GAS,
         NO_DEPOSIT,
       ),
     ],

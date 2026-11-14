@@ -9,7 +9,6 @@ import {
   KeyPair,
   KeyPairSigner,
   actions as nearActions,
-  nearToYocto,
   teraToGas,
   type KeyPairString,
 } from "near-api-js";
@@ -17,6 +16,17 @@ import { DEFAULT_ACCOUNT_ID, DEFAULT_PRIVATE_KEY, Sandbox } from "near-sandbox";
 
 import { AGENT_ORDER } from "../orchestrator/src/policy-agents.js";
 import type { Action, OrderView } from "../orchestrator/src/perception.js";
+import {
+  BUY_CALL_GAS,
+  CORE_ACTION_TYPES,
+  ITEM_DEPOSIT,
+  ONE_NEAR,
+  ORDER_DEPOSIT,
+  RUN_TICK_GAS,
+  TEN_MILLI_NEAR,
+  TOKEN_CALL_GAS,
+  WORLD_CALL_GAS,
+} from "../orchestrator/src/constants.js";
 
 export type ContractName = "world" | "items" | "coin";
 
@@ -47,18 +57,6 @@ const WASM_FILES: Readonly<Record<ContractName, string>> = {
   world: "eidolon_world.wasm",
   items: "eidolon_items.wasm",
   coin: "eidolon_coin.wasm",
-};
-const ONE_NEAR = nearToYocto("1");
-const TEN_MILLI_NEAR = nearToYocto("0.01");
-const ITEM_DEPOSIT = 1n;
-const ORDER_DEPOSIT = TEN_MILLI_NEAR;
-const TOKEN_CALL_GAS = teraToGas(100);
-const BUY_CALL_GAS = teraToGas(160);
-const CORE_ACTION_TYPES: Readonly<Record<string, true>> = {
-  move_to: true,
-  speak: true,
-  produce: true,
-  eat: true,
 };
 
 export interface ContractWasm {
@@ -534,7 +532,7 @@ export async function submitCoreActions(
     contractId: economy.ids.world,
     methodName: "submit_actions",
     args: { actions: core },
-    gas: teraToGas(30),
+    gas: WORLD_CALL_GAS,
     deposit: 0n,
     waitUntil: "EXECUTED",
   });
@@ -641,7 +639,7 @@ export async function executeTick(economy: Economy) {
     contractId: economy.ids.world,
     methodName: "run_tick",
     args: {},
-    gas: teraToGas(600),
+    gas: RUN_TICK_GAS,
     deposit: 0n,
     waitUntil: "FINAL",
   });
