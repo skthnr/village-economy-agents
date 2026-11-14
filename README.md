@@ -25,13 +25,22 @@ sequenceDiagram
     W-->>O: sub-account created
     end
     rect rgb(255,244,214)
-    Note over O,W: PHASE 3 — Tick loop, perceive then act
+    Note over O,W: PHASE 3 — Perceive. One get_perception view per agent
     loop each tick until horizon
     par one view per agent
     O->>W: get_perception(agent_id)
     W-->>O: perception prompt
     end
+    O->>O: parsePerception
+    end
+    end
+    rect rgb(243,232,255)
+    Note over O: PHASE 4 — Decide. resolvePolicyMode picks scripted or LLM
     O->>O: decideActions or decideWithLlm
+    end
+    rect rgb(255,232,232)
+    Note over O,R: PHASE 5 — Act. Submit queued actions, relayer or direct
+    par one submit per agent
     alt relayer configured
     O->>R: relayCoreActions(signed delegate)
     R->>W: submit_actions(actions)
@@ -40,8 +49,8 @@ sequenceDiagram
     end
     end
     end
-    rect rgb(243,232,255)
-    Note over O,K: PHASE 4 — Clear the market
+    rect rgb(224,247,250)
+    Note over O,K: PHASE 6 — Clear the market
     O->>W: post_order(item, quantity, price)
     alt sell side
     O->>I: mt_transfer_call(sell price)
@@ -54,8 +63,8 @@ sequenceDiagram
     W-->>K: unused amount
     end
     end
-    rect rgb(255,232,232)
-    Note over O,W: PHASE 5 — Roll tick and season
+    rect rgb(255,248,225)
+    Note over O,W: PHASE 7 — Roll tick and season
     O->>W: run_tick()
     opt first tick of day
     W->>W: dawn_phase, season_for_tick, weather_for
